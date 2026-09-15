@@ -1,0 +1,63 @@
+# ---- .NET ----
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+.idea/
+*.DotSettings.user
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+# Ignore all package artifacts except packages.lock.json (used for lockfiles)
+**/[Pp]ackages/*
+!**/[Pp]ackages/repositories.config
+
+# Entity Framework migrations lock
+*.efml
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.coverage
+*.coveragexml
+coverage/
+TestResults/
+
+# Rider
+.idea/
+*.sln.iml
+
+# ---- Node ----
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+dist/
+dist-ssr/
+*.local
+.vite/
+coverage/
+
+# ---- OS / Editor ----
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ---- Environment ----
+.env
+.env.*
+!.env.example
+appsettings.*.json
+!appsettings.json
+
+# ---- SDD / Agent local index ----
+.atl/

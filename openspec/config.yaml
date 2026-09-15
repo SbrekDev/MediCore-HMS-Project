@@ -1,0 +1,52 @@
+schema: spec-driven
+
+artifact_store:
+  mode: both            # openspec/ files in repo AND engram persistence
+  execution: interactive
+  pr_strategy: auto-forecast
+  review_budget_lines: 400
+
+context: |
+  Product: MediCore HMS (Hospital/Sanatorium Management System)
+  Backend: C# ASP.NET Core Web API, .NET 10 (LTS), Clean Architecture (Domain/Application/Infrastructure/API)
+  Database: SQL Server + EF Core (migrations)
+  Frontend: React 19 + TypeScript + Vite
+  Tests: xUnit + FluentAssertions (backend), Vitest + Testing Library (frontend)
+  Demo institution: Sanatorio Los Ceibos (fictional)
+
+strict_tdd: true
+
+testing:
+  backend:
+    framework: xUnit + FluentAssertions
+    command: dotnet test
+    coverage: coverlet (planned)
+  frontend:
+    framework: Vitest + Testing Library
+    command: npm test
+    coverage: vitest --coverage (planned)
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+  design:
+    - Document architecture decisions with rationale
+    - Respect Clean Architecture layer boundaries
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    guidelines:
+      - Follow Clean Architecture layer boundaries
+      - Keep generated technical artifacts in English
+    tdd: true
+    test_command: dotnet test
+  verify:
+    test_command: dotnet test
+    build_command: dotnet build
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
