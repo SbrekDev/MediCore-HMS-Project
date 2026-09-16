@@ -30,13 +30,13 @@ Chain strategy: feature-branch-chain
 
 ## Phase 1: PR #1 — Scaffold & Foundation (~500 lines)
 
-- [ ] 1.1 RED: Add `Architecture.Tests` failing when Domain references non-zero dependencies or Api bypasses Application.
-- [ ] 1.2 GREEN: Create solution, `src/Domain`, `Application`, `Infrastructure`, `Api`, `tests/*`, `frontend/` projects.
-- [ ] 1.3 REFACTOR: Enforce CA dependency rule `Api → Application → Domain` via project references and NetArchTest.
-- [ ] 1.4 RED: Add failing test that `AppDbContext` resolves with SQL Server provider.
-- [ ] 1.5 GREEN: Add `AppDbContext`, EF Core SQL Server config, `docker-compose.yml` with SQL Server, initial migration scaffold.
-- [ ] 1.6 GREEN: Add Vite + React 19 + TS + Vitest + Testing Library + React Router scaffold.
-- [ ] 1.7 GREEN: Add base `Entity<T>`, `Result<T>`, `DomainError`, `AuditableEntity`, `IAuditService`/`ICurrentUserService` abstractions.
+- [x] 1.1 RED: Add `Architecture.Tests` failing when Domain references non-zero dependencies or Api bypasses Application.
+- [x] 1.2 GREEN: Create solution, `src/Domain`, `Application`, `Infrastructure`, `Api`, `tests/*`, `frontend/` projects.
+- [x] 1.3 REFACTOR: Enforce CA dependency rule `Api → Application → Domain` via project references and NetArchTest.
+- [x] 1.4 RED: Add failing test that `AppDbContext` resolves with SQL Server provider.
+- [x] 1.5 GREEN: Add `AppDbContext`, EF Core SQL Server config, `docker-compose.yml` with SQL Server, initial migration scaffold.
+- [x] 1.6 GREEN: Add Vite + React 19 + TS + Vitest + Testing Library + React Router scaffold.
+- [x] 1.7 GREEN: Add base `Entity<T>`, `Result<T>`, `DomainError`, `AuditableEntity`, `IAuditService`/`ICurrentUserService` abstractions.
 
 ## Phase 2: PR #2 — Identity, Access & Audit (~700 lines)
 
