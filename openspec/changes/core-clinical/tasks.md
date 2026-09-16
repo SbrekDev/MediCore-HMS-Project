@@ -41,7 +41,7 @@ Chain strategy: feature-branch-chain
 ## Phase 2: PR #2 — Identity, Access & Audit (~700 lines)
 
 - [x] 2.1 RED: Test role seed creates Admin, Receptionist, Professional [Spec: identity-access/Role catalog/Roles seeded].
-- [ ] 2.2 GREEN: Add `ApplicationUser : IdentityUser<Guid>`, Identity config, `DbSeeder` idempotent role seed.
+- [x] 2.2 GREEN: Add `ApplicationUser : IdentityUser<Guid>`, Identity config, `DbSeeder` idempotent role seed.
 - [ ] 2.3 RED: Test successful login returns JWT with role claims and httpOnly refresh cookie [Spec: identity-access/JWT auth/Successful login].
 - [ ] 2.4 GREEN: Implement `IJwtTokenService`, rotating refresh-token store, `/api/auth/{login,refresh,logout,me}`.
 - [ ] 2.5 RED: Test failed login returns 401 and anonymous requests to protected endpoints return 401 [Spec: identity-access/JWT auth/Failed login, Anonymous rejected].
