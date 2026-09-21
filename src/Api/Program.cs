@@ -2,6 +2,7 @@ using MediCore.Api;
 using MediCore.Application;
 using MediCore.Infrastructure;
 using MediCore.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,20 +22,24 @@ if (app.Environment.IsDevelopment())
 
 using (var scope = app.Services.CreateScope())
 {
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     try
     {
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await dbContext.Database.MigrateAsync();
         await DbSeeder.SeedRolesAsync(scope.ServiceProvider);
     }
     catch (Exception ex)
     {
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Failed to seed roles on startup.");
+        logger.LogError(ex, "Failed to migrate or seed database on startup.");
     }
 }
 
 app.UseHttpsRedirection();
+app.UseApiMiddleware();
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
+app.MapApiEndpoints();
 
 app.Run();
 
