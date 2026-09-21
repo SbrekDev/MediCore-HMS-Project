@@ -60,13 +60,13 @@ Escalation rule: run the whole phase (orchestrator + apply + verify + JD) under 
 
 - [x] 2.1 RED: Test role seed creates Admin, Receptionist, Professional [Spec: identity-access/Role catalog/Roles seeded].
 - [x] 2.2 GREEN: Add `ApplicationUser : IdentityUser<Guid>`, Identity config, `DbSeeder` idempotent role seed.
-- [ ] 2.3 RED: Test successful login returns JWT with role claims and httpOnly refresh cookie [Spec: identity-access/JWT auth/Successful login].
-- [ ] 2.4 GREEN: Implement `IJwtTokenService`, rotating refresh-token store, `/api/auth/{login,refresh,logout,me}`.
-- [ ] 2.5 RED: Test failed login returns 401 and anonymous requests to protected endpoints return 401 [Spec: identity-access/JWT auth/Failed login, Anonymous rejected].
-- [ ] 2.6 RED: Test role matrix allows Admin/Receptionist and forbids Professional on booking [Spec: identity-access/Role-based access].
-- [ ] 2.7 GREEN: Add `AdminOnly`, `ReceptionStaff`, `ClinicalStaff` policies and authorization handlers.
-- [ ] 2.8 RED: Test patient mutation writes `AuditEntry` [Spec: audit-compliance/Audit trail].
-- [ ] 2.9 GREEN: Add `AuditEntry` entity and `AuditInterceptor` capturing actor/action/target/timestamp/changes.
+- [x] 2.3 RED: Test successful login returns JWT with role claims and httpOnly refresh cookie [Spec: identity-access/JWT auth/Successful login].
+- [x] 2.4 GREEN: Implement `IJwtTokenService`, rotating refresh-token store, `/api/auth/{login,refresh,logout,me}`.
+- [x] 2.5 RED: Test failed login returns 401 and anonymous requests to protected endpoints return 401 [Spec: identity-access/JWT auth/Failed login, Anonymous rejected].
+- [x] 2.6 RED: Test role matrix allows Admin/Receptionist and forbids Professional on booking [Spec: identity-access/Role-based access].
+- [x] 2.7 GREEN: Add `AdminOnly`, `ReceptionStaff`, `ClinicalStaff` policies and authorization handlers.
+- [x] 2.8 RED: Test patient mutation writes `AuditEntry` [Spec: audit-compliance/Audit trail].
+- [x] 2.9 GREEN: Add `AuditEntry` entity and `AuditInterceptor` capturing actor/action/target/timestamp/changes.
 
 ## Phase 3: PR #3 — Specialty Catalog & Professional Management (~900 lines) [profile: cheap]
 

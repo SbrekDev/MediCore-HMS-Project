@@ -1,6 +1,7 @@
 using MediCore.Api.Authorization;
 using MediCore.Api.Endpoints;
 using MediCore.Application;
+using MediCore.Application.Patients;
 
 namespace MediCore.Api;
 
@@ -10,6 +11,7 @@ public static class DependencyInjection
     {
         services.AddApplication();
         services.AddMediCoreAuthorizationPolicies();
+        services.AddScoped<CreatePatient.Handler>();
         return services;
     }
 
@@ -24,6 +26,7 @@ public static class DependencyInjection
     {
         app.MapAuthEndpoints();
         app.MapAppointmentEndpoints();
+        app.MapPatientEndpoints();
         return app;
     }
 }
