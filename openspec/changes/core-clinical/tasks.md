@@ -16,6 +16,24 @@ Chained PRs recommended: Yes
 Chain strategy: feature-branch-chain
 400-line budget risk: High
 
+### SDD Profile Assignment (quality/token balance)
+
+Lever note: `sdd-apply` runs `kimi-k2.7-code` in all three profiles, so the profile does NOT change the implementation writer. It changes the orchestrator (kimi-k3 $3/$15 vs qwen3.8-max ~$2/$6 vs qwen3.7-plus $0.40/$1.60 per Mtok), the verifier (pro/balanced = deepseek-v4-pro; cheap = deepseek-v4.1-flash), and the Judgment Day judges (pro/balanced = v4-pro; cheap = v4.1-flash). Pick the profile per phase by domain risk, not by line count.
+
+| Phase | PR | Profile | Why |
+|---|---|---|---|
+| 1 — Scaffold | #1 | cheap (done) | Mechanical project scaffolding |
+| 2 — Identity & Audit | #2 | balanced | Security-sensitive but standard ASP.NET Identity + JWT patterns; keeps v4-pro verify and judges |
+| 3 — Catalog & Professionals | #3 | cheap | CRUD, idempotent seeds, join table — lowest domain risk |
+| 4 — Patients | #4 | balanced | Data-integrity invariants: unique document, minor-responsible, filtered unique index |
+| 5 — Agenda | #5 | balanced | Domain rules with edge cases: exceptions, sobreturno cap |
+| 6 — Scheduling | #6 | pro | Core domain: overlap scheduler, UPDLOCK/HOLDLOCK concurrency, lifecycle — highest blast radius |
+| 7 — FE Auth | #7 | cheap | Standard axios single-flight + route guard, ~400 lines |
+| 8 — FE Patients & Professionals | #8 | cheap | RHF+zod forms, TanStack Query — mechanical UI |
+| 9 — FE Agenda & Booking | #9 | cheap | Forms + mocked-API tests; booking domain risk already covered by Phase 6 backend |
+
+Escalation rule: run the whole phase (orchestrator + apply + verify + JD) under its assigned profile. If a cheap/balanced phase fails verify twice in a row, retry that phase one profile up.
+
 ### Suggested Work Units
 
 | Unit | Goal | Likely PR | Focused test command | Runtime harness | Rollback boundary |
@@ -28,7 +46,7 @@ Chain strategy: feature-branch-chain
 | 6 | Appointment scheduler domain rules, booking handler with locking, lifecycle endpoints, concurrency test | PR #6 | `dotnet test tests/Api.IntegrationTests --filter Concurrency` | Parallel `POST /api/appointments` → one 201, one 409 | Revert appointment entity, scheduler, booking handler |
 | 7–9 | Frontend auth, patients/professionals, agenda/booking slices | PR #7–#9 | `npm test` | `npm run dev` + manual login→book flow | Revert `frontend/src/features/{domain}` |
 
-## Phase 1: PR #1 — Scaffold & Foundation (~500 lines)
+## Phase 1: PR #1 — Scaffold & Foundation (~500 lines) [profile: cheap]
 
 - [x] 1.1 RED: Add `Architecture.Tests` failing when Domain references non-zero dependencies or Api bypasses Application.
 - [x] 1.2 GREEN: Create solution, `src/Domain`, `Application`, `Infrastructure`, `Api`, `tests/*`, `frontend/` projects.
@@ -38,7 +56,7 @@ Chain strategy: feature-branch-chain
 - [x] 1.6 GREEN: Add Vite + React 19 + TS + Vitest + Testing Library + React Router scaffold.
 - [x] 1.7 GREEN: Add base `Entity<T>`, `Result<T>`, `DomainError`, `AuditableEntity`, `IAuditService`/`ICurrentUserService` abstractions.
 
-## Phase 2: PR #2 — Identity, Access & Audit (~700 lines)
+## Phase 2: PR #2 — Identity, Access & Audit (~700 lines) [profile: balanced]
 
 - [x] 2.1 RED: Test role seed creates Admin, Receptionist, Professional [Spec: identity-access/Role catalog/Roles seeded].
 - [x] 2.2 GREEN: Add `ApplicationUser : IdentityUser<Guid>`, Identity config, `DbSeeder` idempotent role seed.
@@ -50,7 +68,7 @@ Chain strategy: feature-branch-chain
 - [ ] 2.8 RED: Test patient mutation writes `AuditEntry` [Spec: audit-compliance/Audit trail].
 - [ ] 2.9 GREEN: Add `AuditEntry` entity and `AuditInterceptor` capturing actor/action/target/timestamp/changes.
 
-## Phase 3: PR #3 — Specialty Catalog & Professional Management (~900 lines)
+## Phase 3: PR #3 — Specialty Catalog & Professional Management (~900 lines) [profile: cheap]
 
 - [ ] 3.1 RED: Test specialty seed is idempotent and creates 30-min defaults [Spec: specialty-catalog/Seeded catalog].
 - [ ] 3.2 GREEN: Add `Specialty` entity, config, idempotent seed, `GET /api/specialties`, `PATCH /specialties/{id}/active`.
@@ -61,7 +79,7 @@ Chain strategy: feature-branch-chain
 - [ ] 3.7 GREEN: Add `ProfessionalSpecialty` join, `PUT /api/professionals/{id}/specialties/{specialtyId}`.
 - [ ] 3.8 RED: Test duration default inherits 30 min and override applies 45 min [Spec: professional-management/Duration override].
 
-## Phase 4: PR #4 — Patient Management (~900 lines)
+## Phase 4: PR #4 — Patient Management (~900 lines) [profile: balanced]
 
 - [ ] 4.1 RED: Test patient registration captures document type/number, names, birth date, contact, address [Spec: patient-management/Registration].
 - [ ] 4.2 GREEN: Add `Patient`, `Address`, `Contact`, `CoverageEntry`, `Insurer` entities and EF configs.
@@ -75,7 +93,7 @@ Chain strategy: feature-branch-chain
 - [ ] 4.10 RED: Test consent recorded at registration and pending flag surfaced [Spec: audit-compliance/Consent capture].
 - [ ] 4.11 GREEN: Add `ConsentStatus`/`ConsentGivenAt`, `POST /api/patients/{id}/consent`, patient DTO exposes `consentPending`.
 
-## Phase 5: PR #5 — Agenda Management (~600 lines)
+## Phase 5: PR #5 — Agenda Management (~600 lines) [profile: balanced]
 
 - [ ] 5.1 RED: Test weekly availability blocks define bookable weekday windows [Spec: agenda-management/Weekly template].
 - [ ] 5.2 GREEN: Add `Agenda`, `AvailabilityBlock` entities, `PUT /api/professionals/{id}/agenda`.
@@ -84,7 +102,7 @@ Chain strategy: feature-branch-chain
 - [ ] 5.5 RED: Test daily sobreturno cap enforced [Spec: agenda-management/Sobreturno cap].
 - [ ] 5.6 GREEN: Add `MaxSobreturnosPerDay` and `GET /api/professionals/{id}/availability?date=`.
 
-## Phase 6: PR #6 — Appointment Scheduling (~1,100 lines)
+## Phase 6: PR #6 — Appointment Scheduling (~1,100 lines) [profile: pro]
 
 - [ ] 6.1 RED: Test `AppointmentScheduler` rejects professional overlap and allows adjacent appointments [Spec: appointment-scheduling/No double-booking].
 - [ ] 6.2 GREEN: Implement pure domain `AppointmentScheduler.Schedule(SchedulingRequest, ScheduleContext)`.
@@ -98,20 +116,20 @@ Chain strategy: feature-branch-chain
 - [ ] 6.10 RED: Test cancellation flags late when <24h, completion allowed only for own professional [Spec: appointment-scheduling/Cancellation, Completion].
 - [ ] 6.11 GREEN: Add `POST /api/appointments/{id}/{reschedule,cancel,complete,no-show}` and no-show counter increment.
 
-## Phase 7: PR #7 — Frontend Auth (~400 lines)
+## Phase 7: PR #7 — Frontend Auth (~400 lines) [profile: cheap]
 
 - [ ] 7.1 RED: Test login form submits credentials and stores access token [Spec: identity-access/JWT auth].
 - [ ] 7.2 GREEN: Add `api/axios.ts` with in-memory token and 401 refresh single-flight interceptor.
 - [ ] 7.3 GREEN: Add `<RequireRole>` guard and `/login` route.
 
-## Phase 8: PR #8 — Frontend Patients & Professionals (~700 lines)
+## Phase 8: PR #8 — Frontend Patients & Professionals (~700 lines) [profile: cheap]
 
 - [ ] 8.1 RED: Test patient search/list/form with validation [Spec: patient-management].
 - [ ] 8.2 GREEN: Add `features/patients/` with RHF + zod, TanStack Query.
 - [ ] 8.3 RED: Test professional list/form and specialty assignment UI [Spec: professional-management].
 - [ ] 8.4 GREEN: Add `features/professionals/`.
 
-## Phase 9: PR #9 — Frontend Agenda & Booking (~700 lines)
+## Phase 9: PR #9 — Frontend Agenda & Booking (~700 lines) [profile: cheap]
 
 - [ ] 9.1 RED: Test agenda block editor and exception UI [Spec: agenda-management].
 - [ ] 9.2 GREEN: Add `features/agenda/`.
