@@ -307,3 +307,53 @@
 - Current PR: #5b — Agenda exceptions (targets `pr-05a-agenda-template`; will be merged into `feature/core-clinical` tracker)
 - Boundary: adds `AgendaException` domain model, EF schema, and `POST/DELETE /api/professionals/{id}/agenda/exceptions`; excludes sobreturno cap enforcement and availability query (5.5–5.6)
 - Review budget impact: ~390 authored lines (excluding generated EF migration Designer). Within budget; no `size:exception` required.
+
+## Phase 5 / Slice C — Sobreturno Cap & Availability Query (tasks 5.5–5.6)
+
+- [x] 5.5 RED: Test daily sobreturno cap enforced [Spec: agenda-management/Sobreturno cap].
+  - Evidence: `dotnet test tests/Domain.UnitTests --filter SobreturnoCapTests` → 3 passed.
+  - Implementation: `Agenda.CanAddSobreturno(int currentSobreturnosCount)` returns `currentSobreturnosCount < MaxSobreturnosPerDay`; rejects at-cap and zero-cap agendas.
+- [x] 5.6 GREEN: Add `MaxSobreturnosPerDay` and `GET /api/professionals/{id}/availability?date=`.
+  - Evidence: `dotnet build MediCore.slnx` → 0 warnings, 0 errors.
+  - Evidence: `dotnet test tests/Application.UnitTests --filter GetAvailabilityTests` → 5 passed.
+  - Evidence: `dotnet test tests/Api.IntegrationTests --no-build` → 33 passed, 0 failed, 0 skipped (container startup ~2m 34s).
+  - Implementation:
+    - Domain: added `Agenda.CanAddSobreturno` for cap enforcement.
+    - Application: added `GetAvailability.Query/Handler` returning `AvailabilityResponse` (professional id, date, windows, max sobreturnos per day).
+    - Availability calculation: filters blocks by requested date's day of week, removes full-day exceptions, subtracts partial exception ranges to yield remaining bookable windows.
+    - API: `GET /api/professionals/{id}/availability?date=` under `ClinicalStaff` policy; returns 404 for unknown professional and 200 with empty windows when no agenda exists.
+    - DI: registered `GetAvailability.Handler`.
+
+## Work Unit Evidence
+
+| Work unit | Focused test command | Result | Runtime harness | Rollback boundary |
+|---|---|---|---|---|
+| Sobreturno cap domain rule (5.5) | `dotnet test tests/Domain.UnitTests --filter SobreturnoCapTests` | 3 passed | N/A (pure domain) | Remove `Agenda.CanAddSobreturno` from `Agenda.cs` |
+| Availability query (5.6) | `dotnet test tests/Application.UnitTests --filter GetAvailabilityTests` | 5 passed | `dotnet test tests/Api.IntegrationTests --no-build` (container) | Remove `GetAvailability.cs`, revert `AgendaEndpoints.cs`, `Api.DependencyInjection.cs` |
+| Availability endpoint (5.6) | `dotnet test tests/Api.IntegrationTests --filter AgendaEndpointTests` | 2 passed | `dotnet test tests/Api.IntegrationTests --no-build` (container) | Remove GET route from `AgendaEndpoints.cs` |
+
+## Verification summary
+
+| Command | Result |
+|---|---|
+| `dotnet build MediCore.slnx` | Build succeeded (0 warnings, 0 errors) |
+| `dotnet test tests/Domain.UnitTests` | 17 passed, 0 failed, 0 skipped |
+| `dotnet test tests/Application.UnitTests` | 35 passed, 0 failed, 0 skipped |
+| `dotnet test tests/Architecture.Tests` | 3 passed, 0 failed, 0 skipped |
+| `dotnet test tests/Api.IntegrationTests --no-build` | 33 passed, 0 failed, 0 skipped |
+
+## Commits
+
+- `54307ac` test(agenda): add RED tests for sobreturno cap and availability query (tasks 5.5, 5.6)
+- `c3e62ef` feat(agenda): wire MaxSobreturnosPerDay into availability query (tasks 5.5, 5.6)
+
+## Status
+
+2/2 tasks complete for Phase 5 / Slice C (5.5–5.6). Phase 5 (Agenda Management) is complete. Ready for Phase 6 (Appointment Scheduling) or verify.
+
+## Workload / PR Boundary
+
+- Mode: auto-chain / feature-branch-chain
+- Current PR: #5c — Agenda availability (targets `pr-05b-agenda-exceptions`; will be merged into `feature/core-clinical` tracker)
+- Boundary: adds `Agenda.CanAddSobreturno`, `GetAvailability` query, and `GET /api/professionals/{id}/availability?date=`; excludes appointment scheduler/booking endpoints (Phase 6)
+- Review budget impact: 516 changed lines (514 insertions + 2 deletions) across tests + production code. Exceeds the 400-line budget because the autonomous slice requires both the new availability query/handlers and their focused domain, application, and integration tests. The production code is only ~158 lines; tests account for the rest. Recommend `size:exception` for this slice or accept as a single chained-PR work unit.
