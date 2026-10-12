@@ -1,5 +1,6 @@
 using MediCore.Api.Authorization;
 using MediCore.Application.Patients;
+using MediCore.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 
 namespace MediCore.Api.Endpoints;
@@ -62,11 +63,32 @@ public static class PatientEndpoints
                         request.Address.Number,
                         request.Address.City,
                         request.Address.Province,
-                        request.Address.PostalCode)),
+                        request.Address.PostalCode),
+                    request.ResponsiblePatientId),
                 cancellationToken);
 
             return result.IsSuccess
                 ? Results.NoContent()
+                : MapErrorResult(result.Error.Code, result.Error.Message);
+        });
+
+        group.MapPost("/{id:guid}/coverages", [Authorize(Policy = AuthorizationPolicies.ReceptionStaff)] async (
+            Guid id,
+            AddCoverageRequest request,
+            AddCoverage.Handler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new AddCoverage.Command(
+                    id,
+                    request.Type,
+                    request.InsurerId,
+                    request.PlanName,
+                    request.AffiliateNumber),
+                cancellationToken);
+
+            return result.IsSuccess
+                ? Results.Created($"/api/patients/{id}/coverages/{result.Value}", new { coverageId = result.Value })
                 : MapErrorResult(result.Error.Code, result.Error.Message);
         });
 
@@ -78,6 +100,7 @@ public static class PatientEndpoints
         return code switch
         {
             "Patient.NotFound" => Results.NotFound(new { code, message }),
+            "Patient.ResponsibleNotFound" => Results.NotFound(new { code, message }),
             "Patient.DuplicateDocument" => Results.Conflict(new { code, message }),
             _ => Results.BadRequest(new { code, message })
         };
@@ -101,4 +124,11 @@ public sealed record UpdatePatientRequest(
     string LastName,
     DateTimeOffset BirthDate,
     UpdatePatientContactRequest Contact,
-    UpdatePatientAddressRequest Address);
+    UpdatePatientAddressRequest Address,
+    Guid? ResponsiblePatientId = null);
+
+public sealed record AddCoverageRequest(
+    CoverageType Type,
+    string PlanName,
+    Guid? InsurerId = null,
+    string? AffiliateNumber = null);

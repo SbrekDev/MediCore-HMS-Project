@@ -3,6 +3,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using MediCore.Api.IntegrationTests.Infrastructure;
+using MediCore.Domain.Entities;
+using MediCore.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MediCore.Api.IntegrationTests;
 
@@ -148,7 +152,161 @@ public class PatientEndpointTests : IntegrationTestBase
         patient.Address.City.Should().Be("Córdoba");
     }
 
-    private static object BuildCreateRequest(string documentType, string documentNumber)
+    [Fact]
+    public async Task Post_minor_without_responsible_returns_bad_request()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for patient endpoint tests");
+
+        var client = Factory.CreateClient();
+        await SeedUserAsync("receptionist@ceibos.demo", "TestPass123!", "Receptionist");
+        var accessToken = await LoginAsync(client, "receptionist@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var response = await client.PostAsJsonAsync("/api/patients", BuildCreateRequest(
+            "DNI",
+            "40111222",
+            birthDate: DateTimeOffset.UtcNow.AddYears(-10)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Patient.ResponsibleRequired");
+    }
+
+    [Fact]
+    public async Task Post_minor_with_responsible_returns_created()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for patient endpoint tests");
+
+        var client = Factory.CreateClient();
+        await SeedUserAsync("receptionist@ceibos.demo", "TestPass123!", "Receptionist");
+        var accessToken = await LoginAsync(client, "receptionist@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var responsible = await client.PostAsJsonAsync("/api/patients", BuildCreateRequest("DNI", "50111222"));
+        responsible.EnsureSuccessStatusCode();
+        var responsiblePatient = await responsible.Content.ReadFromJsonAsync<CreatePatientResponse>();
+
+        var response = await client.PostAsJsonAsync("/api/patients", BuildCreateRequest(
+            "DNI",
+            "60111222",
+            birthDate: DateTimeOffset.UtcNow.AddYears(-10),
+            responsiblePatientId: responsiblePatient!.PatientId));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task Post_coverage_becomes_active()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for patient endpoint tests");
+
+        var client = Factory.CreateClient();
+        await SeedUserAsync("receptionist@ceibos.demo", "TestPass123!", "Receptionist");
+        var accessToken = await LoginAsync(client, "receptionist@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var create = await client.PostAsJsonAsync("/api/patients", BuildCreateRequest("DNI", "80111222"));
+        create.EnsureSuccessStatusCode();
+        var created = await create.Content.ReadFromJsonAsync<CreatePatientResponse>();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/patients/{created!.PatientId}/coverages",
+            BuildCoverageRequest(CoverageType.ObraSocial, Guid.Parse("bbbbbbbb-1111-1111-1111-111111111111"), "123456"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task Post_second_coverage_deactivates_first()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for patient endpoint tests");
+
+        var client = Factory.CreateClient();
+        await SeedUserAsync("receptionist@ceibos.demo", "TestPass123!", "Receptionist");
+        var accessToken = await LoginAsync(client, "receptionist@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var create = await client.PostAsJsonAsync("/api/patients", BuildCreateRequest("DNI", "90111222"));
+        create.EnsureSuccessStatusCode();
+        var created = await create.Content.ReadFromJsonAsync<CreatePatientResponse>();
+
+        var first = await client.PostAsJsonAsync(
+            $"/api/patients/{created!.PatientId}/coverages",
+            BuildCoverageRequest(CoverageType.ObraSocial, Guid.Parse("bbbbbbbb-1111-1111-1111-111111111111"), "123456"));
+        first.EnsureSuccessStatusCode();
+
+        var second = await client.PostAsJsonAsync(
+            $"/api/patients/{created.PatientId}/coverages",
+            BuildCoverageRequest(CoverageType.Prepaga, Guid.Parse("bbbbbbbb-2222-2222-2222-222222222222"), "999888"));
+        second.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var entries = await dbContext.CoverageEntries
+            .Where(c => c.PatientId == created.PatientId)
+            .ToListAsync();
+
+        entries.Should().HaveCount(2);
+        entries.Should().ContainSingle(c => c.IsActive);
+    }
+
+    [Fact]
+    public async Task Post_particular_coverage_without_insurer_succeeds()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for patient endpoint tests");
+
+        var client = Factory.CreateClient();
+        await SeedUserAsync("receptionist@ceibos.demo", "TestPass123!", "Receptionist");
+        var accessToken = await LoginAsync(client, "receptionist@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var create = await client.PostAsJsonAsync("/api/patients", BuildCreateRequest("DNI", "11111111"));
+        create.EnsureSuccessStatusCode();
+        var created = await create.Content.ReadFromJsonAsync<CreatePatientResponse>();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/patients/{created!.PatientId}/coverages",
+            new
+            {
+                type = 2,
+                planName = "Self-pay"
+            });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
+    [Fact]
+    public async Task Post_obra_social_coverage_without_insurer_returns_bad_request()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for patient endpoint tests");
+
+        var client = Factory.CreateClient();
+        await SeedUserAsync("receptionist@ceibos.demo", "TestPass123!", "Receptionist");
+        var accessToken = await LoginAsync(client, "receptionist@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var create = await client.PostAsJsonAsync("/api/patients", BuildCreateRequest("DNI", "22222222"));
+        create.EnsureSuccessStatusCode();
+        var created = await create.Content.ReadFromJsonAsync<CreatePatientResponse>();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/patients/{created!.PatientId}/coverages",
+            new
+            {
+                type = 0,
+                planName = "Plan Base"
+            });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Coverage.InsurerRequired");
+    }
+
+    private static object BuildCreateRequest(
+        string documentType,
+        string documentNumber,
+        DateTimeOffset? birthDate = null,
+        Guid? responsiblePatientId = null)
     {
         return new
         {
@@ -156,7 +314,7 @@ public class PatientEndpointTests : IntegrationTestBase
             documentNumber,
             firstName = "Maria",
             lastName = "Gonzalez",
-            birthDate = new DateTimeOffset(1985, 5, 15, 0, 0, 0, TimeSpan.Zero),
+            birthDate = birthDate ?? new DateTimeOffset(1985, 5, 15, 0, 0, 0, TimeSpan.Zero),
             contact = new
             {
                 mobilePhone = "+54 9 11 1234-5678",
@@ -170,7 +328,19 @@ public class PatientEndpointTests : IntegrationTestBase
                 city = "Buenos Aires",
                 province = "CABA",
                 postalCode = "C1059"
-            }
+            },
+            responsiblePatientId
+        };
+    }
+
+    private static object BuildCoverageRequest(CoverageType type, Guid insurerId, string affiliateNumber)
+    {
+        return new
+        {
+            type = (int)type,
+            insurerId,
+            planName = "Plan Base",
+            affiliateNumber
         };
     }
 

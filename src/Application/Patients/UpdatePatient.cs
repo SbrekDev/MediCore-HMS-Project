@@ -14,7 +14,8 @@ public static class UpdatePatient
         string LastName,
         DateTimeOffset BirthDate,
         CreatePatient.ContactRequest Contact,
-        CreatePatient.AddressRequest Address);
+        CreatePatient.AddressRequest Address,
+        Guid? ResponsiblePatientId = null);
 
     public sealed class Handler
     {
@@ -61,6 +62,30 @@ public static class UpdatePatient
                     "Street, number, city, province and postal code are required."));
             }
 
+            var now = DateTimeOffset.UtcNow;
+            var age = CreatePatient.CalculateAge(command.BirthDate, now);
+
+            if (age < 18 && command.ResponsiblePatientId is null)
+            {
+                return Result<Unit>.Failure(DomainError.Validation(
+                    "Patient.ResponsibleRequired",
+                    "A patient under 18 years old must have a recorded responsible."));
+            }
+
+            if (command.ResponsiblePatientId is not null)
+            {
+                var responsibleExists = await _context.Patients
+                    .AsNoTracking()
+                    .AnyAsync(p => p.Id == command.ResponsiblePatientId, cancellationToken);
+
+                if (!responsibleExists)
+                {
+                    return Result<Unit>.Failure(DomainError.NotFound(
+                        "Patient.ResponsibleNotFound",
+                        $"Responsible patient '{command.ResponsiblePatientId}' was not found."));
+                }
+            }
+
             var patient = await _context.Patients
                 .FirstOrDefaultAsync(p => p.Id == command.PatientId, cancellationToken);
 
@@ -74,6 +99,7 @@ public static class UpdatePatient
             patient.FirstName = command.FirstName;
             patient.LastName = command.LastName;
             patient.BirthDate = command.BirthDate;
+            patient.ResponsiblePatientId = command.ResponsiblePatientId;
             patient.Contact = new Contact
             {
                 MobilePhone = command.Contact.MobilePhone,

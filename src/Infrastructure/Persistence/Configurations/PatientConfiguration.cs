@@ -31,6 +31,11 @@ public class PatientConfiguration : IEntityTypeConfiguration<Patient>
         builder.HasIndex(p => new { p.DocumentType, p.DocumentNumber })
             .IsUnique();
 
+        builder.HasOne(p => p.ResponsiblePatient)
+            .WithMany()
+            .HasForeignKey(p => p.ResponsiblePatientId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.OwnsOne(p => p.Contact, contact =>
         {
             contact.Property(c => c.MobilePhone)
