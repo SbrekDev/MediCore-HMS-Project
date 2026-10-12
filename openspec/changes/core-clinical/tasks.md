@@ -75,9 +75,9 @@ Escalation rule: run the whole phase (orchestrator + apply + verify + JD) under 
 - [x] 3.3 RED: Test inactive specialty excluded from booking options [Spec: specialty-catalog/Active flag].
 - [x] 3.4 RED: Test professional registration requires MN and persists MPs [Spec: professional-management/Registration].
 - [x] 3.5 GREEN: Add `Professional`, `ProvincialLicenseMP` entities, validators, handlers, `POST/GET/PUT /api/professionals`.
-- [ ] 3.6 RED: Test specialty assignment records multiple specialties with primary flag [Spec: professional-management/Specialty assignment].
-- [ ] 3.7 GREEN: Add `ProfessionalSpecialty` join, `PUT /api/professionals/{id}/specialties/{specialtyId}`.
-- [ ] 3.8 RED: Test duration default inherits 30 min and override applies 45 min [Spec: professional-management/Duration override].
+- [x] 3.6 RED: Test specialty assignment records multiple specialties with primary flag [Spec: professional-management/Specialty assignment].
+- [x] 3.7 GREEN: Add `ProfessionalSpecialty` join, `PUT /api/professionals/{id}/specialties/{specialtyId}`.
+- [x] 3.8 RED: Test duration default inherits 30 min and override applies 45 min [Spec: professional-management/Duration override].
 
 ## Phase 4: PR #4 — Patient Management (~900 lines) [profile: balanced]
 

@@ -16,4 +16,5 @@ public class Professional : AuditableEntity<Guid>
     public string LastName { get; set; } = string.Empty;
     public string NationalLicenseMN { get; set; } = string.Empty;
     public ICollection<ProvincialLicenseMP> ProvincialLicenses { get; set; } = new List<ProvincialLicenseMP>();
+    public ICollection<ProfessionalSpecialty> Specialties { get; set; } = new List<ProfessionalSpecialty>();
 }

@@ -61,6 +61,22 @@ public static class ProfessionalEndpoints
                 : MapErrorResult(result.Error.Code, result.Error.Message);
         });
 
+        group.MapPut("/{id:guid}/specialties/{specialtyId:guid}", [Authorize(Policy = AuthorizationPolicies.AdminOnly)] async (
+            Guid id,
+            Guid specialtyId,
+            AssignSpecialtyRequest request,
+            AssignProfessionalSpecialty.Handler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new AssignProfessionalSpecialty.Command(id, specialtyId, request.IsPrimary, request.DurationOverrideMinutes),
+                cancellationToken);
+
+            return result.IsSuccess
+                ? Results.NoContent()
+                : MapErrorResult(result.Error.Code, result.Error.Message);
+        });
+
         return app;
     }
 
@@ -81,3 +97,5 @@ public sealed record UpdateProfessionalRequest(
     IReadOnlyList<UpdateProvincialLicenseRequest> ProvincialLicenses);
 
 public sealed record UpdateProvincialLicenseRequest(string Number, string Province);
+
+public sealed record AssignSpecialtyRequest(bool IsPrimary, int? DurationOverrideMinutes = null);
