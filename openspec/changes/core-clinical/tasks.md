@@ -95,12 +95,12 @@ Escalation rule: run the whole phase (orchestrator + apply + verify + JD) under 
 
 ## Phase 5: PR #5 — Agenda Management (~600 lines) [profile: balanced]
 
-- [ ] 5.1 RED: Test weekly availability blocks define bookable weekday windows [Spec: agenda-management/Weekly template].
-- [ ] 5.2 GREEN: Add `Agenda`, `AvailabilityBlock` entities, `PUT /api/professionals/{id}/agenda`.
-- [ ] 5.3 RED: Test full-day exception blocks booking and partial exception leaves remaining hours [Spec: agenda-management/Exceptions].
-- [ ] 5.4 GREEN: Add `AgendaException`, `POST/DELETE /api/professionals/{id}/agenda/exceptions`.
-- [ ] 5.5 RED: Test daily sobreturno cap enforced [Spec: agenda-management/Sobreturno cap].
-- [ ] 5.6 GREEN: Add `MaxSobreturnosPerDay` and `GET /api/professionals/{id}/availability?date=`.
+- [x] 5.1 RED: Test weekly availability blocks define bookable weekday windows [Spec: agenda-management/Weekly template].
+- [x] 5.2 GREEN: Add `Agenda`, `AvailabilityBlock` entities, `PUT /api/professionals/{id}/agenda`.
+- [x] 5.3 RED: Test full-day exception blocks booking and partial exception leaves remaining hours [Spec: agenda-management/Exceptions].
+- [x] 5.4 GREEN: Add `AgendaException`, `POST/DELETE /api/professionals/{id}/agenda/exceptions`.
+- [x] 5.5 RED: Test daily sobreturno cap enforced [Spec: agenda-management/Sobreturno cap].
+- [x] 5.6 GREEN: Add `MaxSobreturnosPerDay` and `GET /api/professionals/{id}/availability?date=`.
 
 ## Phase 6: PR #6 — Appointment Scheduling (~1,100 lines) [profile: pro]
 

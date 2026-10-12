@@ -28,6 +28,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<Specialty> Specialties => Set<Specialty>();
     public DbSet<CoverageEntry> CoverageEntries => Set<CoverageEntry>();
     public DbSet<Insurer> Insurers => Set<Insurer>();
+    public DbSet<Agenda> Agendas => Set<Agenda>();
+    public DbSet<AvailabilityBlock> AvailabilityBlocks => Set<AvailabilityBlock>();
+    public DbSet<AgendaException> AgendaExceptions => Set<AgendaException>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
