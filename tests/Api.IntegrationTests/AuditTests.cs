@@ -26,7 +26,21 @@ public class AuditTests : IntegrationTestBase
             documentNumber = "12345678",
             firstName = "Maria",
             lastName = "Gonzalez",
-            birthDate = new DateTimeOffset(1985, 5, 15, 0, 0, 0, TimeSpan.Zero)
+            birthDate = new DateTimeOffset(1985, 5, 15, 0, 0, 0, TimeSpan.Zero),
+            contact = new
+            {
+                mobilePhone = "+54 9 11 1234-5678",
+                landlinePhone = "+54 11 8765-4321",
+                email = "maria.gonzalez@example.com"
+            },
+            address = new
+            {
+                street = "Av. Santa Fe",
+                number = "1234",
+                city = "Buenos Aires",
+                province = "CABA",
+                postalCode = "C1059"
+            }
         });
 
         response.EnsureSuccessStatusCode();

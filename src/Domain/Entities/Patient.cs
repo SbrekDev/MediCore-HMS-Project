@@ -17,4 +17,9 @@ public class Patient : AuditableEntity<Guid>
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public DateTimeOffset BirthDate { get; set; }
+
+    public Contact Contact { get; set; } = new Contact();
+    public Address Address { get; set; } = new Address();
+
+    public ICollection<CoverageEntry> CoverageEntries { get; set; } = new List<CoverageEntry>();
 }
