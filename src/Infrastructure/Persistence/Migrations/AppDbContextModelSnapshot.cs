@@ -71,6 +71,143 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                     b.ToTable("Patients", (string)null);
                 });
 
+            modelBuilder.Entity("MediCore.Domain.Entities.Professional", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTimeOffset>("ModifiedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("NationalLicenseMN")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NationalLicenseMN")
+                        .IsUnique();
+
+                    b.ToTable("Professionals", (string)null);
+                });
+
+            modelBuilder.Entity("MediCore.Domain.Entities.ProfessionalSpecialty", b =>
+                {
+                    b.Property<Guid>("ProfessionalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SpecialtyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("DurationOverrideMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("bit");
+
+                    b.HasKey("ProfessionalId", "SpecialtyId");
+
+                    b.HasIndex("SpecialtyId");
+
+                    b.HasIndex("ProfessionalId", "IsPrimary")
+                        .IsUnique()
+                        .HasFilter("[IsPrimary] = 1");
+
+                    b.ToTable("ProfessionalSpecialties", (string)null);
+                });
+
+            modelBuilder.Entity("MediCore.Domain.Entities.ProvincialLicenseMP", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("ProfessionalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Province")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfessionalId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("ProvincialLicenseMPs", (string)null);
+                });
+
+            modelBuilder.Entity("MediCore.Domain.Entities.Specialty", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DefaultDurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("ModifiedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("IsActive");
+
+                    b.ToTable("Specialties", (string)null);
+                });
+
             modelBuilder.Entity("MediCore.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -342,6 +479,30 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("MediCore.Domain.Entities.ProfessionalSpecialty", b =>
+                {
+                    b.HasOne("MediCore.Domain.Entities.Professional", null)
+                        .WithMany("Specialties")
+                        .HasForeignKey("ProfessionalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MediCore.Domain.Entities.Specialty", null)
+                        .WithMany()
+                        .HasForeignKey("SpecialtyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("MediCore.Domain.Entities.ProvincialLicenseMP", b =>
+                {
+                    b.HasOne("MediCore.Domain.Entities.Professional", null)
+                        .WithMany("ProvincialLicenses")
+                        .HasForeignKey("ProfessionalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("MediCore.Infrastructure.Identity.RefreshToken", b =>
                 {
                     b.HasOne("MediCore.Infrastructure.Identity.ApplicationUser", null)
@@ -400,6 +561,13 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("MediCore.Domain.Entities.Professional", b =>
+                {
+                    b.Navigation("ProvincialLicenses");
+
+                    b.Navigation("Specialties");
                 });
 #pragma warning restore 612, 618
         }
