@@ -29,7 +29,6 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("AffiliateNumber")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
@@ -116,6 +115,16 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("BirthDate")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<DateTimeOffset?>("ConsentGivenAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ConsentStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("Pending");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -148,7 +157,12 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ModifiedBy")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("ResponsiblePatientId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("ResponsiblePatientId");
 
                     b.HasIndex("DocumentType", "DocumentNumber")
                         .IsUnique();
@@ -583,6 +597,11 @@ namespace MediCore.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("MediCore.Domain.Entities.Patient", b =>
                 {
+                    b.HasOne("MediCore.Domain.Entities.Patient", "ResponsiblePatient")
+                        .WithMany()
+                        .HasForeignKey("ResponsiblePatientId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.OwnsOne("MediCore.Domain.Entities.Address", "Address", b1 =>
                         {
                             b1.Property<Guid>("PatientId")
@@ -652,6 +671,8 @@ namespace MediCore.Infrastructure.Persistence.Migrations
 
                     b.Navigation("Contact")
                         .IsRequired();
+
+                    b.Navigation("ResponsiblePatient");
                 });
 
             modelBuilder.Entity("MediCore.Domain.Entities.ProfessionalSpecialty", b =>

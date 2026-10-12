@@ -1,4 +1,5 @@
 using MediCore.Domain.Entities;
+using MediCore.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -30,6 +31,11 @@ public class PatientConfiguration : IEntityTypeConfiguration<Patient>
 
         builder.HasIndex(p => new { p.DocumentType, p.DocumentNumber })
             .IsUnique();
+
+        builder.HasOne(p => p.ResponsiblePatient)
+            .WithMany()
+            .HasForeignKey(p => p.ResponsiblePatientId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.OwnsOne(p => p.Contact, contact =>
         {
@@ -71,5 +77,13 @@ public class PatientConfiguration : IEntityTypeConfiguration<Patient>
             .WithOne(c => c.Patient)
             .HasForeignKey(c => c.PatientId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Property(p => p.ConsentStatus)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(50)
+            .HasDefaultValue(ConsentStatus.Pending);
+
+        builder.Property(p => p.ConsentGivenAt);
     }
 }

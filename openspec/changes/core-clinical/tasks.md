@@ -85,13 +85,13 @@ Escalation rule: run the whole phase (orchestrator + apply + verify + JD) under 
 - [x] 4.2 GREEN: Add `Patient`, `Address`, `Contact`, `CoverageEntry`, `Insurer` entities and EF configs.
 - [x] 4.3 RED: Test duplicate (DocumentType, DocumentNumber) returns 409; same number different type is accepted [Spec: patient-management/Unique document].
 - [x] 4.4 GREEN: Add unique index `(DocumentType, DocumentNumber)`, handlers, `GET/POST /api/patients`, `GET/PUT /api/patients/{id}`.
-- [ ] 4.5 RED: Test minor without responsible rejected, minor with responsible accepted, adult accepted [Spec: patient-management/Minor requires responsible].
-- [ ] 4.6 GREEN: Add age-derived validation and `ResponsiblePatientId` self-FK.
-- [ ] 4.7 RED: Test coverage history with exactly one active, Particular requires no insurer [Spec: patient-management/Coverage history].
-- [ ] 4.8 GREEN: Add filtered unique index `(PatientId) WHERE IsActive=1`, `POST /api/patients/{id}/coverages`.
-- [ ] 4.9 RED: Test search by document number and name [Spec: patient-management/Patient search].
-- [ ] 4.10 RED: Test consent recorded at registration and pending flag surfaced [Spec: audit-compliance/Consent capture].
-- [ ] 4.11 GREEN: Add `ConsentStatus`/`ConsentGivenAt`, `POST /api/patients/{id}/consent`, patient DTO exposes `consentPending`.
+- [x] 4.5 RED: Test minor without responsible rejected, minor with responsible accepted, adult accepted [Spec: patient-management/Minor requires responsible].
+- [x] 4.6 GREEN: Add age-derived validation and `ResponsiblePatientId` self-FK.
+- [x] 4.7 RED: Test coverage history with exactly one active, Particular requires no insurer [Spec: patient-management/Coverage history].
+- [x] 4.8 GREEN: Add filtered unique index `(PatientId) WHERE IsActive=1`, `POST /api/patients/{id}/coverages`.
+- [x] 4.9 RED: Test search by document number and name [Spec: patient-management/Patient search].
+- [x] 4.10 RED: Test consent recorded at registration and pending flag surfaced [Spec: audit-compliance/Consent capture].
+- [x] 4.11 GREEN: Add `ConsentStatus`/`ConsentGivenAt`, `POST /api/patients/{id}/consent`, patient DTO exposes `consentPending`.
 
 ## Phase 5: PR #5 — Agenda Management (~600 lines) [profile: balanced]
 

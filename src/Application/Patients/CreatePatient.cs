@@ -1,6 +1,7 @@
 using MediCore.Application.Abstractions;
 using MediCore.Domain.Common;
 using MediCore.Domain.Entities;
+using MediCore.Domain.Enums;
 using MediCore.Domain.Errors;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,7 +28,9 @@ public static class CreatePatient
         string LastName,
         DateTimeOffset BirthDate,
         ContactRequest Contact,
-        AddressRequest Address);
+        AddressRequest Address,
+        Guid? ResponsiblePatientId = null,
+        bool ConsentGiven = false);
 
     public sealed class Handler
     {
@@ -88,6 +91,30 @@ public static class CreatePatient
                     "Street, number, city, province and postal code are required."));
             }
 
+            var now = DateTimeOffset.UtcNow;
+            var age = CalculateAge(command.BirthDate, now);
+
+            if (age < 18 && command.ResponsiblePatientId is null)
+            {
+                return Result<Guid>.Failure(DomainError.Validation(
+                    "Patient.ResponsibleRequired",
+                    "A patient under 18 years old must have a recorded responsible."));
+            }
+
+            if (command.ResponsiblePatientId is not null)
+            {
+                var responsibleExists = await _context.Patients
+                    .AsNoTracking()
+                    .AnyAsync(p => p.Id == command.ResponsiblePatientId, cancellationToken);
+
+                if (!responsibleExists)
+                {
+                    return Result<Guid>.Failure(DomainError.NotFound(
+                        "Patient.ResponsibleNotFound",
+                        $"Responsible patient '{command.ResponsiblePatientId}' was not found."));
+                }
+            }
+
             var existing = await _context.Patients
                 .AsNoTracking()
                 .FirstOrDefaultAsync(
@@ -101,7 +128,6 @@ public static class CreatePatient
                     $"A patient with document {command.DocumentType} {command.DocumentNumber} already exists."));
             }
 
-            var now = DateTimeOffset.UtcNow;
             var userId = _currentUserService.UserId ?? Guid.Empty;
 
             var patient = new Patient(Guid.NewGuid())
@@ -111,6 +137,7 @@ public static class CreatePatient
                 FirstName = command.FirstName,
                 LastName = command.LastName,
                 BirthDate = command.BirthDate,
+                ResponsiblePatientId = command.ResponsiblePatientId,
                 Contact = new Contact
                 {
                     MobilePhone = command.Contact.MobilePhone,
@@ -125,6 +152,8 @@ public static class CreatePatient
                     Province = command.Address.Province,
                     PostalCode = command.Address.PostalCode
                 },
+                ConsentStatus = command.ConsentGiven ? ConsentStatus.Given : ConsentStatus.Pending,
+                ConsentGivenAt = command.ConsentGiven ? now : null,
                 CreatedAt = now,
                 CreatedBy = userId,
                 ModifiedAt = now,
@@ -145,5 +174,16 @@ public static class CreatePatient
                 _ => false
             };
         }
+    }
+
+    internal static int CalculateAge(DateTimeOffset birthDate, DateTimeOffset now)
+    {
+        var age = now.Year - birthDate.Year;
+        if (now < birthDate.AddYears(age))
+        {
+            age--;
+        }
+
+        return age;
     }
 }

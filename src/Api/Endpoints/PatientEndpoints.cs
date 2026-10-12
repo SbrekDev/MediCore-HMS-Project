@@ -1,6 +1,7 @@
 using MediCore.Api.Authorization;
 using MediCore.Application.Patients;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace MediCore.Api.Endpoints;
 
@@ -23,10 +24,11 @@ public static class PatientEndpoints
         });
 
         group.MapGet("/", [Authorize(Policy = AuthorizationPolicies.ClinicalStaff)] async (
+            string? search,
             ListPatients.Handler handler,
             CancellationToken cancellationToken) =>
         {
-            var patients = await handler.HandleAsync(cancellationToken);
+            var patients = await handler.HandleAsync(search, cancellationToken);
             return Results.Ok(patients);
         });
 
@@ -62,8 +64,41 @@ public static class PatientEndpoints
                         request.Address.Number,
                         request.Address.City,
                         request.Address.Province,
-                        request.Address.PostalCode)),
+                        request.Address.PostalCode),
+                    request.ResponsiblePatientId),
                 cancellationToken);
+
+            return result.IsSuccess
+                ? Results.NoContent()
+                : MapErrorResult(result.Error.Code, result.Error.Message);
+        });
+
+        group.MapPost("/{id:guid}/coverages", [Authorize(Policy = AuthorizationPolicies.ReceptionStaff)] async (
+            Guid id,
+            AddCoverageRequest request,
+            AddCoverage.Handler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(
+                new AddCoverage.Command(
+                    id,
+                    request.Type,
+                    request.InsurerId,
+                    request.PlanName,
+                    request.AffiliateNumber),
+                cancellationToken);
+
+            return result.IsSuccess
+                ? Results.Created($"/api/patients/{id}/coverages/{result.Value}", new { coverageId = result.Value })
+                : MapErrorResult(result.Error.Code, result.Error.Message);
+        });
+
+        group.MapPost("/{id:guid}/consent", [Authorize(Policy = AuthorizationPolicies.ReceptionStaff)] async (
+            Guid id,
+            [FromServices] RecordConsent.Handler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(id, cancellationToken);
 
             return result.IsSuccess
                 ? Results.NoContent()
@@ -78,6 +113,7 @@ public static class PatientEndpoints
         return code switch
         {
             "Patient.NotFound" => Results.NotFound(new { code, message }),
+            "Patient.ResponsibleNotFound" => Results.NotFound(new { code, message }),
             "Patient.DuplicateDocument" => Results.Conflict(new { code, message }),
             _ => Results.BadRequest(new { code, message })
         };
@@ -101,4 +137,11 @@ public sealed record UpdatePatientRequest(
     string LastName,
     DateTimeOffset BirthDate,
     UpdatePatientContactRequest Contact,
-    UpdatePatientAddressRequest Address);
+    UpdatePatientAddressRequest Address,
+    Guid? ResponsiblePatientId = null);
+
+public sealed record AddCoverageRequest(
+    string Type,
+    string PlanName,
+    Guid? InsurerId = null,
+    string? AffiliateNumber = null);

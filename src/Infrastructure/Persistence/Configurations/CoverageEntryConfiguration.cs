@@ -20,7 +20,6 @@ public class CoverageEntryConfiguration : IEntityTypeConfiguration<CoverageEntry
             .HasMaxLength(200);
 
         builder.Property(c => c.AffiliateNumber)
-            .IsRequired()
             .HasMaxLength(100);
 
         builder.Property(c => c.IsActive)

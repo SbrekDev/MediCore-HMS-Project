@@ -20,7 +20,7 @@ public class CoverageEntry : AuditableEntity<Guid>
     public Insurer? Insurer { get; set; }
 
     public string PlanName { get; set; } = string.Empty;
-    public string AffiliateNumber { get; set; } = string.Empty;
+    public string? AffiliateNumber { get; set; }
     public bool IsActive { get; set; }
 }
 

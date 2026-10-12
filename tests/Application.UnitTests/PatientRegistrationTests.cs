@@ -35,7 +35,8 @@ public class PatientRegistrationTests
                 Number: "1234",
                 City: "Buenos Aires",
                 Province: "CABA",
-                PostalCode: "C1059")));
+                PostalCode: "C1059"),
+            null));
 
         result.IsSuccess.Should().BeTrue();
 
@@ -95,6 +96,110 @@ public class PatientRegistrationTests
         result.IsSuccess.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task Register_minor_without_responsible_is_rejected()
+    {
+        var services = new ServiceCollection();
+        services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase("PatientMinorNoResponsible"));
+        var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        await using var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await context.Database.EnsureCreatedAsync();
+
+        var handler = new CreatePatient.Handler(context, new TestCurrentUserService());
+        var result = await handler.HandleAsync(new CreatePatient.Command(
+            "DNI",
+            "40111222",
+            "Child",
+            "Gonzalez",
+            DateTimeOffset.UtcNow.AddYears(-10),
+            new CreatePatient.ContactRequest(
+                MobilePhone: "+54 9 11 1234-5678",
+                LandlinePhone: null,
+                Email: null),
+            new CreatePatient.AddressRequest(
+                Street: "Av. Santa Fe",
+                Number: "1234",
+                City: "Buenos Aires",
+                Province: "CABA",
+                PostalCode: "C1059"),
+            null));
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Patient.ResponsibleRequired");
+    }
+
+    [Fact]
+    public async Task Register_minor_with_existing_responsible_is_accepted()
+    {
+        var services = new ServiceCollection();
+        services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase("PatientMinorWithResponsible"));
+        var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        await using var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await context.Database.EnsureCreatedAsync();
+
+        var handler = new CreatePatient.Handler(context, new TestCurrentUserService());
+        var responsibleResult = await handler.HandleAsync(CreateCommand("DNI", "50111222"));
+        responsibleResult.IsSuccess.Should().BeTrue();
+
+        var result = await handler.HandleAsync(new CreatePatient.Command(
+            "DNI",
+            "60111222",
+            "Kid",
+            "Gonzalez",
+            DateTimeOffset.UtcNow.AddYears(-10),
+            new CreatePatient.ContactRequest(
+                MobilePhone: "+54 9 11 1234-5678",
+                LandlinePhone: null,
+                Email: null),
+            new CreatePatient.AddressRequest(
+                Street: "Av. Santa Fe",
+                Number: "1234",
+                City: "Buenos Aires",
+                Province: "CABA",
+                PostalCode: "C1059"),
+            responsibleResult.Value));
+
+        result.IsSuccess.Should().BeTrue();
+
+        var patient = await context.Patients.FindAsync(result.Value);
+        patient.Should().NotBeNull();
+        patient!.ResponsiblePatientId.Should().Be(responsibleResult.Value);
+    }
+
+    [Fact]
+    public async Task Register_adult_without_responsible_is_accepted()
+    {
+        var services = new ServiceCollection();
+        services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase("PatientAdultNoResponsible"));
+        var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        await using var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await context.Database.EnsureCreatedAsync();
+
+        var handler = new CreatePatient.Handler(context, new TestCurrentUserService());
+        var result = await handler.HandleAsync(new CreatePatient.Command(
+            "DNI",
+            "70111222",
+            "Adult",
+            "Gonzalez",
+            DateTimeOffset.UtcNow.AddYears(-25),
+            new CreatePatient.ContactRequest(
+                MobilePhone: "+54 9 11 1234-5678",
+                LandlinePhone: null,
+                Email: null),
+            new CreatePatient.AddressRequest(
+                Street: "Av. Santa Fe",
+                Number: "1234",
+                City: "Buenos Aires",
+                Province: "CABA",
+                PostalCode: "C1059"),
+            null));
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
     private static CreatePatient.Command CreateCommand(string documentType, string documentNumber)
     {
         return new CreatePatient.Command(
@@ -112,7 +217,8 @@ public class PatientRegistrationTests
                 Number: "1234",
                 City: "Buenos Aires",
                 Province: "CABA",
-                PostalCode: "C1059"));
+                PostalCode: "C1059"),
+            null);
     }
 
     private sealed class TestCurrentUserService : ICurrentUserService
