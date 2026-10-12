@@ -1,12 +1,36 @@
+using MediCore.Application.Abstractions;
+using MediCore.Domain.Entities;
+using MediCore.Infrastructure.Identity;
+using MediCore.Infrastructure.Persistence.Audit;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace MediCore.Infrastructure.Persistence;
 
-public class AppDbContext : DbContext
+public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>, IApplicationDbContext
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options)
+    private readonly AuditInterceptor? _auditInterceptor;
+
+    public AppDbContext(
+        DbContextOptions<AppDbContext> options,
+        AuditInterceptor? auditInterceptor = null)
         : base(options)
     {
+        _auditInterceptor = auditInterceptor;
+    }
+
+    public DbSet<Patient> Patients => Set<Patient>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        base.OnConfiguring(optionsBuilder);
+        if (_auditInterceptor is not null)
+        {
+            optionsBuilder.AddInterceptors(_auditInterceptor);
+        }
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
