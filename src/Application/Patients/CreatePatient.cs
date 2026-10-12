@@ -1,6 +1,7 @@
 using MediCore.Application.Abstractions;
 using MediCore.Domain.Common;
 using MediCore.Domain.Entities;
+using MediCore.Domain.Enums;
 using MediCore.Domain.Errors;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,7 +29,8 @@ public static class CreatePatient
         DateTimeOffset BirthDate,
         ContactRequest Contact,
         AddressRequest Address,
-        Guid? ResponsiblePatientId = null);
+        Guid? ResponsiblePatientId = null,
+        bool ConsentGiven = false);
 
     public sealed class Handler
     {
@@ -150,6 +152,8 @@ public static class CreatePatient
                     Province = command.Address.Province,
                     PostalCode = command.Address.PostalCode
                 },
+                ConsentStatus = command.ConsentGiven ? ConsentStatus.Given : ConsentStatus.Pending,
+                ConsentGivenAt = command.ConsentGiven ? now : null,
                 CreatedAt = now,
                 CreatedBy = userId,
                 ModifiedAt = now,

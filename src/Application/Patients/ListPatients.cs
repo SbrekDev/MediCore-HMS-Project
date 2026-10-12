@@ -26,7 +26,8 @@ public static class ListPatients
         string LastName,
         DateTimeOffset BirthDate,
         ContactDto Contact,
-        AddressDto Address);
+        AddressDto Address,
+        bool ConsentPending);
 
     public sealed class Handler
     {
@@ -37,10 +38,24 @@ public static class ListPatients
             _context = context;
         }
 
-        public async Task<IReadOnlyList<PatientDto>> HandleAsync(CancellationToken cancellationToken = default)
+        public async Task<IReadOnlyList<PatientDto>> HandleAsync(
+            string? search = null,
+            CancellationToken cancellationToken = default)
         {
-            var patients = await _context.Patients
+            var query = _context.Patients
                 .AsNoTracking()
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var normalizedSearch = search.Trim().ToLowerInvariant();
+                query = query.Where(p =>
+                    p.DocumentNumber.Contains(search) ||
+                    p.FirstName.ToLower().Contains(normalizedSearch) ||
+                    p.LastName.ToLower().Contains(normalizedSearch));
+            }
+
+            var patients = await query
                 .OrderBy(p => p.LastName)
                 .ThenBy(p => p.FirstName)
                 .ToListAsync(cancellationToken);
@@ -67,6 +82,7 @@ public static class ListPatients
                 patient.Address.Number,
                 patient.Address.City,
                 patient.Address.Province,
-                patient.Address.PostalCode));
+                patient.Address.PostalCode),
+            patient.ConsentPending);
     }
 }

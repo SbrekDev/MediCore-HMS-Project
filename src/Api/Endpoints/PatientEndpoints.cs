@@ -1,6 +1,7 @@
 using MediCore.Api.Authorization;
 using MediCore.Application.Patients;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace MediCore.Api.Endpoints;
 
@@ -23,10 +24,11 @@ public static class PatientEndpoints
         });
 
         group.MapGet("/", [Authorize(Policy = AuthorizationPolicies.ClinicalStaff)] async (
+            string? search,
             ListPatients.Handler handler,
             CancellationToken cancellationToken) =>
         {
-            var patients = await handler.HandleAsync(cancellationToken);
+            var patients = await handler.HandleAsync(search, cancellationToken);
             return Results.Ok(patients);
         });
 
@@ -88,6 +90,18 @@ public static class PatientEndpoints
 
             return result.IsSuccess
                 ? Results.Created($"/api/patients/{id}/coverages/{result.Value}", new { coverageId = result.Value })
+                : MapErrorResult(result.Error.Code, result.Error.Message);
+        });
+
+        group.MapPost("/{id:guid}/consent", [Authorize(Policy = AuthorizationPolicies.ReceptionStaff)] async (
+            Guid id,
+            [FromServices] RecordConsent.Handler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(id, cancellationToken);
+
+            return result.IsSuccess
+                ? Results.NoContent()
                 : MapErrorResult(result.Error.Code, result.Error.Message);
         });
 
