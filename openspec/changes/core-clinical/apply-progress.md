@@ -250,8 +250,8 @@
 
 ## Commits
 
-- (pending) test(agenda): add RED tests for weekly availability blocks (task 5.1)
-- (pending) feat(agenda): add Agenda/AvailabilityBlock entities, EF config, migration and PUT endpoint (task 5.2)
+- `0da4b7c` test(agenda): add RED tests for weekly availability blocks (task 5.1)
+- `e1b3def` feat(agenda): add Agenda/AvailabilityBlock entities, EF config, migration and PUT endpoint (task 5.2)
 
 ## Status
 
