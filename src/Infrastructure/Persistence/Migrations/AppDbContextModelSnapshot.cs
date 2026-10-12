@@ -22,6 +22,66 @@ namespace MediCore.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("MediCore.Domain.Entities.Agenda", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("MaxSobreturnosPerDay")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTimeOffset>("ModifiedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProfessionalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfessionalId")
+                        .IsUnique();
+
+                    b.ToTable("Agendas", (string)null);
+                });
+
+            modelBuilder.Entity("MediCore.Domain.Entities.AvailabilityBlock", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AgendaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("int");
+
+                    b.Property<TimeOnly>("End")
+                        .HasColumnType("time");
+
+                    b.Property<TimeOnly>("Start")
+                        .HasColumnType("time");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgendaId", "DayOfWeek", "Start", "End")
+                        .IsUnique();
+
+                    b.ToTable("AvailabilityBlocks", (string)null);
+                });
+
             modelBuilder.Entity("MediCore.Domain.Entities.CoverageEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -578,6 +638,15 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("MediCore.Domain.Entities.AvailabilityBlock", b =>
+                {
+                    b.HasOne("MediCore.Domain.Entities.Agenda", null)
+                        .WithMany("Blocks")
+                        .HasForeignKey("AgendaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("MediCore.Domain.Entities.CoverageEntry", b =>
                 {
                     b.HasOne("MediCore.Domain.Entities.Insurer", "Insurer")
@@ -757,6 +826,11 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("MediCore.Domain.Entities.Agenda", b =>
+                {
+                    b.Navigation("Blocks");
                 });
 
             modelBuilder.Entity("MediCore.Domain.Entities.Patient", b =>

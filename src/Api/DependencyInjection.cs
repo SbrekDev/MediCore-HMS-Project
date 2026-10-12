@@ -1,6 +1,7 @@
 using MediCore.Api.Authorization;
 using MediCore.Api.Endpoints;
 using MediCore.Application;
+using MediCore.Application.Agendas;
 using MediCore.Application.Patients;
 using MediCore.Application.Professionals;
 using MediCore.Application.Specialties;
@@ -26,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<UpdateProfessional.Handler>();
         services.AddScoped<ListSpecialties.Handler>();
         services.AddScoped<ToggleSpecialtyActive.Handler>();
+        services.AddScoped<UpdateAgenda.Handler>();
         return services;
     }
 
@@ -39,6 +41,7 @@ public static class DependencyInjection
     public static IEndpointRouteBuilder MapApiEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapAuthEndpoints();
+        app.MapAgendaEndpoints();
         app.MapAppointmentEndpoints();
         app.MapPatientEndpoints();
         app.MapProfessionalEndpoints();

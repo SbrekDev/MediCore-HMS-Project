@@ -11,6 +11,8 @@ public interface IApplicationDbContext
     DbSet<Specialty> Specialties { get; }
     DbSet<CoverageEntry> CoverageEntries { get; }
     DbSet<Insurer> Insurers { get; }
+    DbSet<Agenda> Agendas { get; }
+    DbSet<AvailabilityBlock> AvailabilityBlocks { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
