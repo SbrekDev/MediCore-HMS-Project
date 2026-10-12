@@ -56,6 +56,37 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                     b.ToTable("Agendas", (string)null);
                 });
 
+            modelBuilder.Entity("MediCore.Domain.Entities.AgendaException", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AgendaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<TimeOnly?>("End")
+                        .HasColumnType("time");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<TimeOnly?>("Start")
+                        .HasColumnType("time");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgendaId", "Date")
+                        .IsUnique();
+
+                    b.ToTable("AgendaExceptions", (string)null);
+                });
+
             modelBuilder.Entity("MediCore.Domain.Entities.AvailabilityBlock", b =>
                 {
                     b.Property<Guid>("Id")
@@ -636,6 +667,15 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("MediCore.Domain.Entities.AgendaException", b =>
+                {
+                    b.HasOne("MediCore.Domain.Entities.Agenda", null)
+                        .WithMany()
+                        .HasForeignKey("AgendaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("MediCore.Domain.Entities.AvailabilityBlock", b =>

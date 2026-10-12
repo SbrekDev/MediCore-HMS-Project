@@ -28,6 +28,8 @@ public static class DependencyInjection
         services.AddScoped<ListSpecialties.Handler>();
         services.AddScoped<ToggleSpecialtyActive.Handler>();
         services.AddScoped<UpdateAgenda.Handler>();
+        services.AddScoped<CreateAgendaException.Handler>();
+        services.AddScoped<DeleteAgendaException.Handler>();
         return services;
     }
 
