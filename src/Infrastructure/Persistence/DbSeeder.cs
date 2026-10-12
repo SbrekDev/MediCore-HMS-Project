@@ -55,4 +55,29 @@ public static class DbSeeder
 
         await context.SaveChangesAsync();
     }
+
+    public static async Task SeedInsurersAsync(IApplicationDbContext context)
+    {
+        var existingNames = await context.Insurers
+            .Select(i => i.Name)
+            .ToListAsync();
+
+        foreach (var seed in InsurerSeedData.Catalog)
+        {
+            if (!existingNames.Contains(seed.Name))
+            {
+                context.Insurers.Add(new Insurer(seed.Id)
+                {
+                    Name = seed.Name,
+                    Type = seed.Type,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    CreatedBy = Guid.Empty,
+                    ModifiedAt = DateTimeOffset.UtcNow,
+                    ModifiedBy = Guid.Empty
+                });
+            }
+        }
+
+        await context.SaveChangesAsync();
+    }
 }

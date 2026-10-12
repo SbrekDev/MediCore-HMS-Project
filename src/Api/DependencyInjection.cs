@@ -17,6 +17,7 @@ public static class DependencyInjection
         services.AddScoped<ListPatients.Handler>();
         services.AddScoped<GetPatient.Handler>();
         services.AddScoped<UpdatePatient.Handler>();
+        services.AddScoped<AddCoverage.Handler>();
         services.AddScoped<AssignProfessionalSpecialty.Handler>();
         services.AddScoped<CreateProfessional.Handler>();
         services.AddScoped<ListProfessionals.Handler>();

@@ -1,6 +1,5 @@
 using MediCore.Api.Authorization;
 using MediCore.Application.Patients;
-using MediCore.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 
 namespace MediCore.Api.Endpoints;
@@ -128,7 +127,7 @@ public sealed record UpdatePatientRequest(
     Guid? ResponsiblePatientId = null);
 
 public sealed record AddCoverageRequest(
-    CoverageType Type,
+    string Type,
     string PlanName,
     Guid? InsurerId = null,
     string? AffiliateNumber = null);

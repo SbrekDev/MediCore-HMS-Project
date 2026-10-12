@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using MediCore.Api.IntegrationTests.Infrastructure;
-using MediCore.Domain.Entities;
 using MediCore.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -209,9 +208,9 @@ public class PatientEndpointTests : IntegrationTestBase
         create.EnsureSuccessStatusCode();
         var created = await create.Content.ReadFromJsonAsync<CreatePatientResponse>();
 
-        var response = await client.PostAsJsonAsync(
+            var response = await client.PostAsJsonAsync(
             $"/api/patients/{created!.PatientId}/coverages",
-            BuildCoverageRequest(CoverageType.ObraSocial, Guid.Parse("bbbbbbbb-1111-1111-1111-111111111111"), "123456"));
+            BuildCoverageRequest("ObraSocial", Guid.Parse("bbbbbbbb-1111-1111-1111-111111111111"), "123456"));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
@@ -232,12 +231,12 @@ public class PatientEndpointTests : IntegrationTestBase
 
         var first = await client.PostAsJsonAsync(
             $"/api/patients/{created!.PatientId}/coverages",
-            BuildCoverageRequest(CoverageType.ObraSocial, Guid.Parse("bbbbbbbb-1111-1111-1111-111111111111"), "123456"));
+            BuildCoverageRequest("ObraSocial", Guid.Parse("bbbbbbbb-1111-1111-1111-111111111111"), "123456"));
         first.EnsureSuccessStatusCode();
 
         var second = await client.PostAsJsonAsync(
             $"/api/patients/{created.PatientId}/coverages",
-            BuildCoverageRequest(CoverageType.Prepaga, Guid.Parse("bbbbbbbb-2222-2222-2222-222222222222"), "999888"));
+            BuildCoverageRequest("Prepaga", Guid.Parse("bbbbbbbb-2222-2222-2222-222222222222"), "999888"));
         second.StatusCode.Should().Be(HttpStatusCode.Created);
 
         using var scope = Factory.Services.CreateScope();
@@ -268,7 +267,7 @@ public class PatientEndpointTests : IntegrationTestBase
             $"/api/patients/{created!.PatientId}/coverages",
             new
             {
-                type = 2,
+                type = "Particular",
                 planName = "Self-pay"
             });
 
@@ -293,7 +292,7 @@ public class PatientEndpointTests : IntegrationTestBase
             $"/api/patients/{created!.PatientId}/coverages",
             new
             {
-                type = 0,
+                type = "ObraSocial",
                 planName = "Plan Base"
             });
 
@@ -333,11 +332,11 @@ public class PatientEndpointTests : IntegrationTestBase
         };
     }
 
-    private static object BuildCoverageRequest(CoverageType type, Guid insurerId, string affiliateNumber)
+    private static object BuildCoverageRequest(string type, Guid insurerId, string affiliateNumber)
     {
         return new
         {
-            type = (int)type,
+            type,
             insurerId,
             planName = "Plan Base",
             affiliateNumber
