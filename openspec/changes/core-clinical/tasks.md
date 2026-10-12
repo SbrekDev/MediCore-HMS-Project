@@ -70,9 +70,9 @@ Escalation rule: run the whole phase (orchestrator + apply + verify + JD) under 
 
 ## Phase 3: PR #3 — Specialty Catalog & Professional Management (~900 lines) [profile: cheap]
 
-- [ ] 3.1 RED: Test specialty seed is idempotent and creates 30-min defaults [Spec: specialty-catalog/Seeded catalog].
-- [ ] 3.2 GREEN: Add `Specialty` entity, config, idempotent seed, `GET /api/specialties`, `PATCH /specialties/{id}/active`.
-- [ ] 3.3 RED: Test inactive specialty excluded from booking options [Spec: specialty-catalog/Active flag].
+- [x] 3.1 RED: Test specialty seed is idempotent and creates 30-min defaults [Spec: specialty-catalog/Seeded catalog].
+- [x] 3.2 GREEN: Add `Specialty` entity, config, idempotent seed, `GET /api/specialties`, `PATCH /specialties/{id}/active`.
+- [x] 3.3 RED: Test inactive specialty excluded from booking options [Spec: specialty-catalog/Active flag].
 - [ ] 3.4 RED: Test professional registration requires MN and persists MPs [Spec: professional-management/Registration].
 - [ ] 3.5 GREEN: Add `Professional`, `ProvincialLicenseMP` entities, validators, handlers, `POST/GET/PUT /api/professionals`.
 - [ ] 3.6 RED: Test specialty assignment records multiple specialties with primary flag [Spec: professional-management/Specialty assignment].
