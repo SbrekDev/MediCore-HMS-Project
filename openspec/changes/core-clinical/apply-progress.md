@@ -52,3 +52,25 @@
 ## Status
 
 3/3 tasks complete for Phase 3 / Slice A. Ready for Slice B (tasks 3.4–3.8).
+
+## Phase 3 / Slice B — Professional Registration (PR #3b)
+
+- [x] 3.4 RED: Test professional registration requires MN and persists MPs [Spec: professional-management/Registration].
+  - Evidence: `dotnet test tests/Application.UnitTests --filter ProfessionalRegistrationTests` → 2 passed.
+- [x] 3.5 GREEN: Add `Professional`, `ProvincialLicenseMP` entities, validators, handlers, `POST/GET/PUT /api/professionals`.
+  - Evidence: `dotnet build MediCore.slnx` → 0 warnings, 0 errors; integration suite green with Docker.
+  - EF migration `20261012163642_AddProfessionalSchema` generated.
+  - Validation (MN required) implemented inline in handlers, matching existing `CreatePatient` patterns (no FluentValidation yet in the codebase).
+
+## Work Unit Evidence (Slice B registration)
+
+| Work unit | Focused test command | Result | Runtime harness | Rollback boundary |
+|---|---|---|---|---|
+| Professional registration (3.4/3.5) | `dotnet test tests/Application.UnitTests --filter ProfessionalRegistrationTests` | 2 passed | `dotnet test tests/Api.IntegrationTests` (Testcontainers SQL Server) | Revert `Professional*` entities/handlers/configs + migration `20261012163642_AddProfessionalSchema` |
+
+## Commits (PR #3b)
+
+- `0ddd289` test(professional): add RED tests for professional registration with MN and MPs (task 3.4)
+- `a8249eb` feat(professional): add Professional entity, handlers, endpoints and migration (task 3.5)
+- `(cherry-picked)` fix(api): remove direct Domain error reference from ProfessionalEndpoints
+- `(docs)` mark tasks 3.4-3.5 complete and add registration apply-progress

@@ -58,18 +58,18 @@ public static class ProfessionalEndpoints
 
             return result.IsSuccess
                 ? Results.NoContent()
-                : MapErrorResult(result.Error);
+                : MapErrorResult(result.Error.Code, result.Error.Message);
         });
 
         return app;
     }
 
-    private static IResult MapErrorResult(MediCore.Domain.Errors.DomainError error)
+    private static IResult MapErrorResult(string code, string message)
     {
-        return error.Code switch
+        return code switch
         {
-            "Professional.NotFound" => Results.NotFound(new { code = error.Code, message = error.Message }),
-            _ => Results.BadRequest(new { code = error.Code, message = error.Message })
+            "Professional.NotFound" => Results.NotFound(new { code, message }),
+            _ => Results.BadRequest(new { code, message })
         };
     }
 }
