@@ -15,4 +15,9 @@ public class Agenda : AuditableEntity<Guid>
     public Guid ProfessionalId { get; set; }
     public int MaxSobreturnosPerDay { get; set; } = 0;
     public ICollection<AvailabilityBlock> Blocks { get; set; } = new List<AvailabilityBlock>();
+
+    public bool CanAddSobreturno(int currentSobreturnosCount)
+    {
+        return currentSobreturnosCount < MaxSobreturnosPerDay;
+    }
 }
