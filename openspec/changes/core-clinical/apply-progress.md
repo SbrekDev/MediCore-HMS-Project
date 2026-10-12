@@ -257,9 +257,53 @@
 
 2/2 tasks complete for Phase 5 / Slice A (5.1–5.2). Ready for Phase 5 / Slice B (tasks 5.3–5.4) or verify.
 
+## Phase 5 / Slice B — Agenda Exceptions (tasks 5.3–5.4)
+
+- [x] 5.3 RED: Test full-day exception blocks booking and partial exception leaves remaining hours [Spec: agenda-management/Exceptions].
+  - Evidence: `dotnet test tests/Domain.UnitTests --filter AgendaExceptionTests` → 2 passed.
+  - Implementation: `AgendaException.IsFullDay` and `IsBlocking(TimeOnly)` encode exception semantics — full-day blocks every time; partial range blocks `[Start, End)` and leaves remaining hours unblocked.
+- [x] 5.4 GREEN: Add `AgendaException`, `POST/DELETE /api/professionals/{id}/agenda/exceptions`.
+  - Evidence: `dotnet build MediCore.slnx` → 0 warnings, 0 errors.
+  - Evidence: `dotnet ef migrations add AddAgendaExceptionSchema` generated `20261012222340_AddAgendaExceptionSchema`.
+  - Evidence: `dotnet test tests/Application.UnitTests --filter AgendaExceptionTests` → 7 passed.
+  - Evidence: `dotnet test tests/Api.IntegrationTests --no-build` → 31 passed, 0 failed, 0 skipped (container startup ~2m 23s).
+  - Implementation:
+    - Domain: `AgendaException` (`AgendaId`, `Date`, optional `Start`/`End`, `Reason`, `IsFullDay`, `IsBlocking`).
+    - Application: `CreateAgendaException.Handler` (validates reason, partial-range completeness, start-before-end, duplicate-date conflict) and `DeleteAgendaException.Handler`.
+    - API: `POST /api/professionals/{id}/agenda/exceptions` and `DELETE /api/professionals/{id}/agenda/exceptions/{exceptionId}` under `AdminOnly` policy.
+    - Persistence: `AgendaExceptionConfiguration`; unique index on `(AgendaId, Date)`; cascade delete on agenda removal.
+
+## Work Unit Evidence
+
+| Work unit | Focused test command | Result | Runtime harness | Rollback boundary |
+|---|---|---|---|---|
+| Domain exception semantics (5.3) | `dotnet test tests/Domain.UnitTests --filter AgendaExceptionTests` | 2 passed | N/A (pure domain) | Remove `AgendaException.cs`, `AgendaExceptionTests.cs` |
+| Create/delete exception handlers (5.4) | `dotnet test tests/Application.UnitTests --filter AgendaExceptionTests` | 7 passed | `dotnet test tests/Api.IntegrationTests --no-build` (container) | Remove `CreateAgendaException.cs`, `DeleteAgendaException.cs`, `AgendaExceptionTests.cs` |
+| EF config + migration (5.4) | `dotnet build MediCore.slnx` | 0 errors | `dotnet ef migrations add AddAgendaExceptionSchema` (design-time) | Remove `AgendaExceptionConfiguration.cs`, migration `20261012222340_AddAgendaExceptionSchema`, revert `AppDbContext.cs`, `IApplicationDbContext.cs`, `AppDbContextModelSnapshot.cs` |
+| API endpoints + DI wiring (5.4) | `dotnet test tests/Api.IntegrationTests --no-build` | 31 passed | `dotnet run --project src/Api` (not run due to no SQL Server locally) | Remove exception routes from `AgendaEndpoints.cs`, revert `Api.DependencyInjection.cs` |
+
+## Verification summary
+
+| Command | Result |
+|---|---|
+| `dotnet build MediCore.slnx` | Build succeeded (0 warnings, 0 errors) |
+| `dotnet test tests/Domain.UnitTests` | 14 passed, 0 failed, 0 skipped |
+| `dotnet test tests/Application.UnitTests` | 30 passed, 0 failed, 0 skipped |
+| `dotnet test tests/Architecture.Tests` | 3 passed, 0 failed, 0 skipped |
+| `dotnet test tests/Api.IntegrationTests --no-build` | 31 passed, 0 failed, 0 skipped |
+
+## Commits
+
+- `TBD` test(agenda): add RED tests for full-day and partial-day exception semantics (task 5.3)
+- `TBD` feat(agenda): add AgendaException entity, EF config, migration and POST/DELETE endpoints (task 5.4)
+
+## Status
+
+2/2 tasks complete for Phase 5 / Slice B (5.3–5.4). Ready for Phase 5 / Slice C (tasks 5.5–5.6) or verify.
+
 ## Workload / PR Boundary
 
 - Mode: auto-chain / feature-branch-chain
-- Current PR: #5a — Weekly agenda template (targets `feature/core-clinical`)
-- Boundary: adds `Agenda` + `AvailabilityBlock` domain model, EF schema, and `PUT /api/professionals/{id}/agenda`; excludes exceptions (5.3–5.4) and sobreturno/availability query (5.5–5.6)
-- Review budget impact: ~1,500 authored lines; ~850 are generated EF migration Designer. Cannot split migration without losing schema integrity. Recommend `size:exception` for migration-generated bulk or accept the full slice as-is per auto-chain.
+- Current PR: #5b — Agenda exceptions (targets `pr-05a-agenda-template`; will be merged into `feature/core-clinical` tracker)
+- Boundary: adds `AgendaException` domain model, EF schema, and `POST/DELETE /api/professionals/{id}/agenda/exceptions`; excludes sobreturno cap enforcement and availability query (5.5–5.6)
+- Review budget impact: ~390 authored lines (excluding generated EF migration Designer). Within budget; no `size:exception` required.
