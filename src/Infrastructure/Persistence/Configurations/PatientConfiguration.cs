@@ -1,4 +1,5 @@
 using MediCore.Domain.Entities;
+using MediCore.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -30,5 +31,59 @@ public class PatientConfiguration : IEntityTypeConfiguration<Patient>
 
         builder.HasIndex(p => new { p.DocumentType, p.DocumentNumber })
             .IsUnique();
+
+        builder.HasOne(p => p.ResponsiblePatient)
+            .WithMany()
+            .HasForeignKey(p => p.ResponsiblePatientId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.OwnsOne(p => p.Contact, contact =>
+        {
+            contact.Property(c => c.MobilePhone)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            contact.Property(c => c.LandlinePhone)
+                .HasMaxLength(50);
+
+            contact.Property(c => c.Email)
+                .HasMaxLength(200);
+        });
+
+        builder.OwnsOne(p => p.Address, address =>
+        {
+            address.Property(a => a.Street)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            address.Property(a => a.Number)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            address.Property(a => a.City)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            address.Property(a => a.Province)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            address.Property(a => a.PostalCode)
+                .IsRequired()
+                .HasMaxLength(20);
+        });
+
+        builder.HasMany(p => p.CoverageEntries)
+            .WithOne(c => c.Patient)
+            .HasForeignKey(c => c.PatientId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Property(p => p.ConsentStatus)
+            .IsRequired()
+            .HasConversion<string>()
+            .HasMaxLength(50)
+            .HasDefaultValue(ConsentStatus.Pending);
+
+        builder.Property(p => p.ConsentGivenAt);
     }
 }

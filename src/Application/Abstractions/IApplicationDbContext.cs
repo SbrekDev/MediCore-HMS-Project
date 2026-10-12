@@ -9,6 +9,8 @@ public interface IApplicationDbContext
     DbSet<Professional> Professionals { get; }
     DbSet<ProfessionalSpecialty> ProfessionalSpecialties { get; }
     DbSet<Specialty> Specialties { get; }
+    DbSet<CoverageEntry> CoverageEntries { get; }
+    DbSet<Insurer> Insurers { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
