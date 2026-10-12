@@ -28,6 +28,7 @@ using (var scope = app.Services.CreateScope())
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await dbContext.Database.MigrateAsync();
         await DbSeeder.SeedRolesAsync(scope.ServiceProvider);
+        await DbSeeder.SeedSpecialtiesAsync(dbContext);
     }
     catch (Exception ex)
     {
