@@ -2,6 +2,7 @@ using MediCore.Api.Authorization;
 using MediCore.Api.Endpoints;
 using MediCore.Application;
 using MediCore.Application.Patients;
+using MediCore.Application.Professionals;
 using MediCore.Application.Specialties;
 
 namespace MediCore.Api;
@@ -13,6 +14,10 @@ public static class DependencyInjection
         services.AddApplication();
         services.AddMediCoreAuthorizationPolicies();
         services.AddScoped<CreatePatient.Handler>();
+        services.AddScoped<CreateProfessional.Handler>();
+        services.AddScoped<ListProfessionals.Handler>();
+        services.AddScoped<GetProfessional.Handler>();
+        services.AddScoped<UpdateProfessional.Handler>();
         services.AddScoped<ListSpecialties.Handler>();
         services.AddScoped<ToggleSpecialtyActive.Handler>();
         return services;
@@ -30,6 +35,7 @@ public static class DependencyInjection
         app.MapAuthEndpoints();
         app.MapAppointmentEndpoints();
         app.MapPatientEndpoints();
+        app.MapProfessionalEndpoints();
         app.MapSpecialtyEndpoints();
         return app;
     }
