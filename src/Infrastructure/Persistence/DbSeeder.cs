@@ -1,4 +1,7 @@
+using MediCore.Application.Abstractions;
+using MediCore.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MediCore.Infrastructure.Persistence;
@@ -24,5 +27,32 @@ public static class DbSeeder
                 }
             }
         }
+    }
+
+    public static async Task SeedSpecialtiesAsync(IApplicationDbContext context)
+    {
+        var existingCodes = await context.Specialties
+            .Select(s => s.Code)
+            .ToListAsync();
+
+        foreach (var seed in SpecialtySeedData.Catalog)
+        {
+            if (!existingCodes.Contains(seed.Code))
+            {
+                context.Specialties.Add(new Specialty(seed.Id)
+                {
+                    Code = seed.Code,
+                    Name = seed.Name,
+                    DefaultDurationMinutes = seed.DefaultDurationMinutes,
+                    IsActive = seed.IsActive,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    CreatedBy = Guid.Empty,
+                    ModifiedAt = DateTimeOffset.UtcNow,
+                    ModifiedBy = Guid.Empty
+                });
+            }
+        }
+
+        await context.SaveChangesAsync();
     }
 }

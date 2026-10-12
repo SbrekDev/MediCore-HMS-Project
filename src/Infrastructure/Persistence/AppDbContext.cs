@@ -23,6 +23,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<Patient> Patients => Set<Patient>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+    public DbSet<Specialty> Specialties => Set<Specialty>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
