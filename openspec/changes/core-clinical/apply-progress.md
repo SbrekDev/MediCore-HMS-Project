@@ -134,6 +134,43 @@
 - `f55dab0` test(patient): add RED tests for patient registration, contact/address and duplicate document (tasks 4.1, 4.3)
 - `50e8778` feat(patient): add contact/address schema, coverage entities, document conflict detection and CRUD endpoints (tasks 4.2, 4.4)
 
+## Phase 4 / Slice B — Minor Responsibility & Coverage History (tasks 4.5–4.8)
+
+- [x] 4.5 RED: Test minor without responsible rejected, minor with responsible accepted, adult accepted [Spec: patient-management/Minor requires responsible].
+  - Evidence: `dotnet test tests/Application.UnitTests --filter PatientRegistrationTests` → 6 passed.
+  - Evidence: `dotnet test tests/Api.IntegrationTests --filter PatientEndpointTests` → 8 passed.
+- [x] 4.6 GREEN: Add age-derived validation and `ResponsiblePatientId` self-FK.
+  - Evidence: `dotnet build MediCore.slnx` → 0 warnings, 0 errors.
+  - Evidence: `dotnet ef migrations add AddPatientResponsibleAndCoverageSchema` generated `20261012174353_AddPatientResponsibleAndCoverageSchema`.
+  - Implementation: `Patient.ResponsiblePatientId` self-FK with `DeleteBehavior.Restrict`; `CreatePatient`/`UpdatePatient` validate minors have a responsible; age computed from `BirthDate` against `DateTimeOffset.UtcNow`.
+- [x] 4.7 RED: Test coverage history with exactly one active, Particular requires no insurer [Spec: patient-management/Coverage history].
+  - Evidence: `dotnet test tests/Application.UnitTests --filter CoverageHistoryTests` → 6 passed.
+- [x] 4.8 GREEN: Add `POST /api/patients/{id}/coverages` enforcing single-active invariant and Particular self-pay rule; seed 3 fictional insurers idempotently via `DbSeeder`.
+  - Evidence: `dotnet test tests/Api.IntegrationTests --filter "PatientEndpointTests|InsurerSeedTests"` → 13 passed.
+  - Implementation: `AddCoverage.Handler` transactionally deactivates prior active entry; `CoverageEntry.AffiliateNumber` made nullable; `InsurerSeedData.Catalog` + `DbSeeder.SeedInsurersAsync` called from `Program.cs`.
+
+## Work Unit Evidence
+
+| Work unit | Focused test command | Result | Runtime harness | Rollback boundary |
+|---|---|---|---|---|
+| Minor requires responsible (4.5/4.6) | `dotnet test tests/Application.UnitTests --filter PatientRegistrationTests` | 6 passed | `dotnet test tests/Api.IntegrationTests --filter PatientEndpointTests` (container) | Remove `Patient.ResponsiblePatientId`, revert `CreatePatient.cs`, `UpdatePatient.cs`, `PatientConfiguration.cs`, `PatientEndpoints.cs`, migration `20261012174353_AddPatientResponsibleAndCoverageSchema` |
+| Coverage history + insurer seed (4.7/4.8) | `dotnet test tests/Application.UnitTests --filter CoverageHistoryTests` | 6 passed | `dotnet test tests/Api.IntegrationTests --filter "PatientEndpointTests|InsurerSeedTests"` (container) | Remove `AddCoverage.cs`, `InsurerSeedData.cs`, revert `CoverageEntry.cs`, `CoverageEntryConfiguration.cs`, `PatientEndpoints.cs`, `DbSeeder.cs`, `Program.cs`, `Api.DependencyInjection.cs` |
+
+## Verification summary
+
+| Command | Result |
+|---|---|
+| `dotnet build MediCore.slnx` | Build succeeded (0 warnings, 0 errors) |
+| `dotnet test tests/Domain.UnitTests` | 9 passed, 0 failed, 0 skipped |
+| `dotnet test tests/Application.UnitTests` | 18 passed, 0 failed, 0 skipped |
+| `dotnet test tests/Architecture.Tests` | 3 passed, 0 failed, 0 skipped |
+| `dotnet test tests/Api.IntegrationTests` | 25 passed, 0 failed, 0 skipped |
+
+## Commits
+
+- `5a931ce` feat(patient): enforce minor requires responsible with self-FK and age validation (tasks 4.5-4.6)
+- `0dc39b1` feat(patient): add coverage history endpoint with single-active invariant and insurer seed (tasks 4.7-4.8)
+
 ## Status
 
-4/4 tasks complete for Phase 4 / Slice A (4.1–4.4). Ready for Phase 4 / Slice B (tasks 4.5–4.8).
+8/8 tasks complete for Phase 4 / Slices A and B (4.1–4.8). Ready for Phase 4 / Slice C (tasks 4.9–4.11).
