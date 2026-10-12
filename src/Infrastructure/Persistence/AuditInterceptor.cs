@@ -14,7 +14,8 @@ public class AuditInterceptor : SaveChangesInterceptor
 
     private static readonly HashSet<string> AuditedEntityTypes = new()
     {
-        typeof(Patient).FullName!
+        typeof(Patient).FullName!,
+        typeof(Professional).FullName!
     };
 
     public AuditInterceptor(ICurrentUserService currentUserService)
