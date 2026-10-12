@@ -174,3 +174,41 @@
 ## Status
 
 8/8 tasks complete for Phase 4 / Slices A and B (4.1–4.8). Ready for Phase 4 / Slice C (tasks 4.9–4.11).
+
+## Phase 4 / Slice C — Patient Search & Consent (tasks 4.9–4.11)
+
+- [x] 4.9 RED: Test search by document number and name [Spec: patient-management/Patient search].
+  - Evidence: `dotnet test tests/Api.IntegrationTests --filter "FullyQualifiedName~Get_patients_by_document_number|FullyQualifiedName~Get_patients_by_name|FullyQualifiedName~Get_patients_by_unmatched"` → 3 failed as expected (endpoint ignores search).
+- [x] 4.10 RED: Test consent recorded at registration and pending flag surfaced [Spec: audit-compliance/Consent capture].
+  - Evidence: `dotnet test tests/Api.IntegrationTests --filter "FullyQualifiedName~Post_patient_without_consent|FullyQualifiedName~Post_patient_with_consent|FullyQualifiedName~Post_consent_records"` → 3 failed as expected (`consentPending` absent, consent endpoint 404).
+- [x] 4.11 GREEN: Add `ConsentStatus`/`ConsentGivenAt` to `Patient`; expose `consentPending` on the patient DTO; add `POST /api/patients/{id}/consent`.
+  - Evidence: `dotnet build MediCore.slnx` → 0 warnings, 0 errors.
+  - Evidence: `dotnet ef migrations add AddPatientConsentColumns` generated `20261012182606_AddPatientConsentColumns`.
+  - Evidence: `dotnet test tests/Api.IntegrationTests --filter PatientEndpointTests` → 18 passed.
+  - Implementation: `ConsentStatus` enum (`Pending`, `Given`); `Patient.RecordConsent`; `CreatePatient` accepts optional `ConsentGiven`; `ListPatients` filters by document number or name; `RecordConsent` handler and endpoint with `ReceptionStaff` policy.
+
+## Work Unit Evidence
+
+| Work unit | Focused test command | Result | Runtime harness | Rollback boundary |
+|---|---|---|---|---|
+| Patient search (4.9/4.11) | `dotnet test tests/Api.IntegrationTests --filter "FullyQualifiedName~Get_patients_by_document_number|FullyQualifiedName~Get_patients_by_name|FullyQualifiedName~Get_patients_by_unmatched"` | 3 passed | `dotnet test tests/Api.IntegrationTests --filter PatientEndpointTests` | Revert `ListPatients.cs`, `PatientEndpoints.cs` |
+| Consent model + endpoint (4.10/4.11) | `dotnet test tests/Api.IntegrationTests --filter "FullyQualifiedName~Post_patient_without_consent|FullyQualifiedName~Post_patient_with_consent|FullyQualifiedName~Post_consent_records"` | 3 passed | `dotnet test tests/Api.IntegrationTests --filter PatientEndpointTests` | Remove `ConsentStatus.cs`, `RecordConsent.cs`, revert `Patient.cs`, `CreatePatient.cs`, `ListPatients.cs`, `PatientConfiguration.cs`, `PatientEndpoints.cs`, `Api.DependencyInjection.cs`, migration `20261012182606_AddPatientConsentColumns` |
+
+## Verification summary
+
+| Command | Result |
+|---|---|
+| `dotnet build MediCore.slnx` | Build succeeded (0 warnings, 0 errors) |
+| `dotnet test tests/Domain.UnitTests` | 9 passed, 0 failed, 0 skipped |
+| `dotnet test tests/Application.UnitTests` | 18 passed, 0 failed, 0 skipped |
+| `dotnet test tests/Architecture.Tests` | 3 passed, 0 failed, 0 skipped |
+| `dotnet test tests/Api.IntegrationTests` | 31 passed, 0 failed, 0 skipped |
+
+## Commits
+
+- `530b189` test(patient): add RED tests for patient search and consent (tasks 4.9, 4.10)
+- `418f9e9` feat(patient): implement search, consent model and consent endpoint (task 4.11)
+
+## Status
+
+11/11 tasks complete for Phase 4 (4.1–4.11). Ready for Phase 5 (Agenda Management).
