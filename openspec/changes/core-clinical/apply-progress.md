@@ -97,6 +97,43 @@
 - `4232a70` test(professional): add RED tests for duration default and override (task 3.8)
 - `232d9a0` fix(api): remove direct Domain error reference from ProfessionalEndpoints
 
+## Phase 4 / Slice A — Patient Core (tasks 4.1–4.4)
+
+- [x] 4.1 RED: Test patient registration captures document type/number, names, birth date, contact, address [Spec: patient-management/Registration].
+  - Evidence: `dotnet test tests/Application.UnitTests --filter PatientRegistrationTests` → 3 passed.
+- [x] 4.2 GREEN: Add `Address`/`Contact` owned by `Patient`, `CoverageEntry`/`Insurer` entities with EF configs. Extend `Patient`. Add EF Core migration `AddPatientContactAddressCoverageSchema`.
+  - Evidence: `dotnet build MediCore.slnx` → 0 warnings, 0 errors.
+  - Evidence: `dotnet ef migrations add AddPatientContactAddressCoverageSchema` generated `20261012171651_AddPatientContactAddressCoverageSchema`.
+- [x] 4.3 RED: Test duplicate (DocumentType, DocumentNumber) returns 409; same number different type is accepted [Spec: patient-management/Unique document].
+  - Evidence: `dotnet test tests/Application.UnitTests --filter PatientRegistrationTests` → duplicate test passes (conflict result).
+- [x] 4.4 GREEN: Rework `CreatePatient` to return `Result<Guid>` with conflict error on duplicate; add `GET /api/patients`, `GET /api/patients/{id}` and `PUT /api/patients/{id}` handlers/endpoints.
+  - Evidence: `dotnet test tests/Api.IntegrationTests --filter PatientEndpointTests` → 6 passed.
+  - Authorization: POST/PUT = `ReceptionStaff`; GET = `ClinicalStaff`.
+  - Validation: inline validation following existing handler convention.
+
+## Work Unit Evidence
+
+| Work unit | Focused test command | Result | Runtime harness | Rollback boundary |
+|---|---|---|---|---|
+| Patient registration (4.1/4.2) | `dotnet test tests/Application.UnitTests --filter PatientRegistrationTests` | 3 passed | `dotnet test tests/Api.IntegrationTests --filter PatientEndpointTests` (container) | Remove `Address.cs`, `Contact.cs`, revert `Patient.cs`, `PatientConfiguration.cs`, `CreatePatient.cs`, migration `20261012171651_AddPatientContactAddressCoverageSchema` |
+| Document uniqueness + CRUD (4.3/4.4) | `dotnet test tests/Application.UnitTests --filter PatientRegistrationTests` | 3 passed | `dotnet test tests/Api.IntegrationTests --filter PatientEndpointTests` (container) | Revert `CreatePatient.cs`, `ListPatients.cs`, `GetPatient.cs`, `UpdatePatient.cs`, `PatientEndpoints.cs`, `Api.DependencyInjection.cs` |
+| Coverage schema (4.2) | N/A (model only) | N/A | N/A | Remove `CoverageEntry.cs`, `Insurer.cs`, configurations, update `AppDbContext.cs`, `IApplicationDbContext.cs` |
+
+## Verification summary
+
+| Command | Result |
+|---|---|
+| `dotnet build MediCore.slnx` | Build succeeded (0 warnings, 0 errors) |
+| `dotnet test tests/Domain.UnitTests` | 9 passed, 0 failed, 0 skipped |
+| `dotnet test tests/Application.UnitTests` | 9 passed, 0 failed, 0 skipped |
+| `dotnet test tests/Architecture.Tests` | 3 passed, 0 failed, 0 skipped |
+| `dotnet test tests/Api.IntegrationTests` | 18 passed, 0 failed, 0 skipped |
+
+## Commits
+
+- `f55dab0` test(patient): add RED tests for patient registration, contact/address and duplicate document (tasks 4.1, 4.3)
+- `50e8778` feat(patient): add contact/address schema, coverage entities, document conflict detection and CRUD endpoints (tasks 4.2, 4.4)
+
 ## Status
 
-8/8 tasks complete for Phase 3 (3.1–3.8). Ready for Phase 4 (Patient Management).
+4/4 tasks complete for Phase 4 / Slice A (4.1–4.4). Ready for Phase 4 / Slice B (tasks 4.5–4.8).

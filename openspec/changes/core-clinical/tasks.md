@@ -81,10 +81,10 @@ Escalation rule: run the whole phase (orchestrator + apply + verify + JD) under 
 
 ## Phase 4: PR #4 — Patient Management (~900 lines) [profile: balanced]
 
-- [ ] 4.1 RED: Test patient registration captures document type/number, names, birth date, contact, address [Spec: patient-management/Registration].
-- [ ] 4.2 GREEN: Add `Patient`, `Address`, `Contact`, `CoverageEntry`, `Insurer` entities and EF configs.
-- [ ] 4.3 RED: Test duplicate (DNI, number) returns 409; same number different type is accepted [Spec: patient-management/Unique document].
-- [ ] 4.4 GREEN: Add unique index `(DocumentType, DocumentNumber)`, handlers, `GET/POST /api/patients`, `GET/PUT /api/patients/{id}`.
+- [x] 4.1 RED: Test patient registration captures document type/number, names, birth date, contact, address [Spec: patient-management/Registration].
+- [x] 4.2 GREEN: Add `Patient`, `Address`, `Contact`, `CoverageEntry`, `Insurer` entities and EF configs.
+- [x] 4.3 RED: Test duplicate (DocumentType, DocumentNumber) returns 409; same number different type is accepted [Spec: patient-management/Unique document].
+- [x] 4.4 GREEN: Add unique index `(DocumentType, DocumentNumber)`, handlers, `GET/POST /api/patients`, `GET/PUT /api/patients/{id}`.
 - [ ] 4.5 RED: Test minor without responsible rejected, minor with responsible accepted, adult accepted [Spec: patient-management/Minor requires responsible].
 - [ ] 4.6 GREEN: Add age-derived validation and `ResponsiblePatientId` self-FK.
 - [ ] 4.7 RED: Test coverage history with exactly one active, Particular requires no insurer [Spec: patient-management/Coverage history].
