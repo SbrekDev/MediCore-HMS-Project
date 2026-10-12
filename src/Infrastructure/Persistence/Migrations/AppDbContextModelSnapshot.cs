@@ -112,6 +112,31 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                     b.ToTable("Professionals", (string)null);
                 });
 
+            modelBuilder.Entity("MediCore.Domain.Entities.ProfessionalSpecialty", b =>
+                {
+                    b.Property<Guid>("ProfessionalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SpecialtyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("DurationOverrideMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("bit");
+
+                    b.HasKey("ProfessionalId", "SpecialtyId");
+
+                    b.HasIndex("SpecialtyId");
+
+                    b.HasIndex("ProfessionalId", "IsPrimary")
+                        .IsUnique()
+                        .HasFilter("[IsPrimary] = 1");
+
+                    b.ToTable("ProfessionalSpecialties", (string)null);
+                });
+
             modelBuilder.Entity("MediCore.Domain.Entities.ProvincialLicenseMP", b =>
                 {
                     b.Property<Guid>("Id")
@@ -454,6 +479,21 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("MediCore.Domain.Entities.ProfessionalSpecialty", b =>
+                {
+                    b.HasOne("MediCore.Domain.Entities.Professional", null)
+                        .WithMany("Specialties")
+                        .HasForeignKey("ProfessionalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MediCore.Domain.Entities.Specialty", null)
+                        .WithMany()
+                        .HasForeignKey("SpecialtyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("MediCore.Domain.Entities.ProvincialLicenseMP", b =>
                 {
                     b.HasOne("MediCore.Domain.Entities.Professional", null)
@@ -526,6 +566,8 @@ namespace MediCore.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("MediCore.Domain.Entities.Professional", b =>
                 {
                     b.Navigation("ProvincialLicenses");
+
+                    b.Navigation("Specialties");
                 });
 #pragma warning restore 612, 618
         }
