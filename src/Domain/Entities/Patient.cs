@@ -1,4 +1,5 @@
 using MediCore.Domain.Common;
+using MediCore.Domain.Enums;
 
 namespace MediCore.Domain.Entities;
 
@@ -25,4 +26,15 @@ public class Patient : AuditableEntity<Guid>
     public Address Address { get; set; } = new Address();
 
     public ICollection<CoverageEntry> CoverageEntries { get; set; } = new List<CoverageEntry>();
+
+    public ConsentStatus ConsentStatus { get; set; } = ConsentStatus.Pending;
+    public DateTimeOffset? ConsentGivenAt { get; set; }
+
+    public bool ConsentPending => ConsentStatus == ConsentStatus.Pending;
+
+    public void RecordConsent(DateTimeOffset givenAt)
+    {
+        ConsentStatus = ConsentStatus.Given;
+        ConsentGivenAt = givenAt;
+    }
 }

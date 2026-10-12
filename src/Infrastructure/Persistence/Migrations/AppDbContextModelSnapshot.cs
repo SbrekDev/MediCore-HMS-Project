@@ -115,6 +115,16 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("BirthDate")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<DateTimeOffset?>("ConsentGivenAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ConsentStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("Pending");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 

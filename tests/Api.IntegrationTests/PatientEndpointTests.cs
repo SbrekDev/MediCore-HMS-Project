@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using FluentAssertions;
 using MediCore.Api.IntegrationTests.Infrastructure;
 using MediCore.Infrastructure.Persistence;
@@ -301,18 +302,149 @@ public class PatientEndpointTests : IntegrationTestBase
         error!.Code.Should().Be("Coverage.InsurerRequired");
     }
 
+    [Fact]
+    public async Task Get_patients_by_document_number_returns_matching_patient()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for patient endpoint tests");
+
+        var client = Factory.CreateClient();
+        await SeedUserAsync("receptionist@ceibos.demo", "TestPass123!", "Receptionist");
+        var accessToken = await LoginAsync(client, "receptionist@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        await client.PostAsJsonAsync("/api/patients", BuildCreateRequest("DNI", "30111222"));
+        await client.PostAsJsonAsync("/api/patients", BuildCreateRequest("DNI", "30222333"));
+
+        var response = await client.GetAsync("/api/patients?search=30111222");
+        response.EnsureSuccessStatusCode();
+
+        var patients = await response.Content.ReadFromJsonAsync<List<PatientDto>>();
+        patients.Should().ContainSingle();
+        patients.Single().DocumentNumber.Should().Be("30111222");
+    }
+
+    [Fact]
+    public async Task Get_patients_by_name_returns_matching_patients()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for patient endpoint tests");
+
+        var client = Factory.CreateClient();
+        await SeedUserAsync("receptionist@ceibos.demo", "TestPass123!", "Receptionist");
+        var accessToken = await LoginAsync(client, "receptionist@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        await client.PostAsJsonAsync("/api/patients", BuildCreateRequest("DNI", "30111222", firstName: "Maria", lastName: "Gonzalez"));
+        await client.PostAsJsonAsync("/api/patients", BuildCreateRequest("DNI", "30222333", firstName: "Juan", lastName: "Perez"));
+
+        var response = await client.GetAsync("/api/patients?search=Gonzalez");
+        response.EnsureSuccessStatusCode();
+
+        var patients = await response.Content.ReadFromJsonAsync<List<PatientDto>>();
+        patients.Should().ContainSingle();
+        patients.Single().LastName.Should().Be("Gonzalez");
+    }
+
+    [Fact]
+    public async Task Get_patients_by_unmatched_search_returns_empty()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for patient endpoint tests");
+
+        var client = Factory.CreateClient();
+        await SeedUserAsync("receptionist@ceibos.demo", "TestPass123!", "Receptionist");
+        var accessToken = await LoginAsync(client, "receptionist@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        await client.PostAsJsonAsync("/api/patients", BuildCreateRequest("DNI", "30111222"));
+
+        var response = await client.GetAsync("/api/patients?search=nonexistent");
+        response.EnsureSuccessStatusCode();
+
+        var patients = await response.Content.ReadFromJsonAsync<List<PatientDto>>();
+        patients.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Post_patient_without_consent_surfaces_pending_flag()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for patient endpoint tests");
+
+        var client = Factory.CreateClient();
+        await SeedUserAsync("receptionist@ceibos.demo", "TestPass123!", "Receptionist");
+        var accessToken = await LoginAsync(client, "receptionist@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var create = await client.PostAsJsonAsync("/api/patients", BuildCreateRequest("DNI", "30111222"));
+        create.EnsureSuccessStatusCode();
+        var created = await create.Content.ReadFromJsonAsync<CreatePatientResponse>();
+
+        var getResponse = await client.GetAsync($"/api/patients/{created!.PatientId}");
+        getResponse.EnsureSuccessStatusCode();
+
+        var patient = await getResponse.Content.ReadFromJsonAsync<PatientDto>();
+        patient!.ConsentPending.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Post_patient_with_consent_records_given()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for patient endpoint tests");
+
+        var client = Factory.CreateClient();
+        await SeedUserAsync("receptionist@ceibos.demo", "TestPass123!", "Receptionist");
+        var accessToken = await LoginAsync(client, "receptionist@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var create = await client.PostAsJsonAsync("/api/patients", BuildCreateRequest("DNI", "30111222", consentGiven: true));
+        create.EnsureSuccessStatusCode();
+        var created = await create.Content.ReadFromJsonAsync<CreatePatientResponse>();
+
+        var getResponse = await client.GetAsync($"/api/patients/{created!.PatientId}");
+        getResponse.EnsureSuccessStatusCode();
+
+        var json = await getResponse.Content.ReadFromJsonAsync<JsonElement>();
+        json.TryGetProperty("consentPending", out var consentPending).Should().BeTrue();
+        consentPending.GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Post_consent_records_consent_and_clears_pending_flag()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for patient endpoint tests");
+
+        var client = Factory.CreateClient();
+        await SeedUserAsync("receptionist@ceibos.demo", "TestPass123!", "Receptionist");
+        var accessToken = await LoginAsync(client, "receptionist@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var create = await client.PostAsJsonAsync("/api/patients", BuildCreateRequest("DNI", "30111222"));
+        create.EnsureSuccessStatusCode();
+        var created = await create.Content.ReadFromJsonAsync<CreatePatientResponse>();
+
+        var consentResponse = await client.PostAsync($"/api/patients/{created!.PatientId}/consent", null);
+        consentResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var getResponse = await client.GetAsync($"/api/patients/{created.PatientId}");
+        getResponse.EnsureSuccessStatusCode();
+
+        var patient = await getResponse.Content.ReadFromJsonAsync<PatientDto>();
+        patient!.ConsentPending.Should().BeFalse();
+    }
+
     private static object BuildCreateRequest(
         string documentType,
         string documentNumber,
         DateTimeOffset? birthDate = null,
-        Guid? responsiblePatientId = null)
+        Guid? responsiblePatientId = null,
+        string firstName = "Maria",
+        string lastName = "Gonzalez",
+        bool consentGiven = false)
     {
         return new
         {
             documentType,
             documentNumber,
-            firstName = "Maria",
-            lastName = "Gonzalez",
+            firstName,
+            lastName,
             birthDate = birthDate ?? new DateTimeOffset(1985, 5, 15, 0, 0, 0, TimeSpan.Zero),
             contact = new
             {
@@ -328,7 +460,8 @@ public class PatientEndpointTests : IntegrationTestBase
                 province = "CABA",
                 postalCode = "C1059"
             },
-            responsiblePatientId
+            responsiblePatientId,
+            consentGiven
         };
     }
 
@@ -355,7 +488,8 @@ public class PatientEndpointTests : IntegrationTestBase
         string LastName,
         DateTimeOffset BirthDate,
         ContactDto Contact,
-        AddressDto Address);
+        AddressDto Address,
+        bool ConsentPending);
 
     private sealed record ContactDto(string MobilePhone, string? LandlinePhone, string? Email);
 
