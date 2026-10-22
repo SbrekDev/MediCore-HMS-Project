@@ -108,7 +108,7 @@ Escalation rule: run the whole phase (orchestrator + apply + verify + JD) under 
 - [x] 6.2 GREEN: Implement pure domain `AppointmentScheduler.Schedule(SchedulingRequest, ScheduleContext)`.
 - [x] 6.3 RED: Test patient overlap across professionals rejected [Spec: appointment-scheduling/No patient overlap].
 - [x] 6.4 RED: Test unheld specialty rejected [Spec: appointment-scheduling/Specialty validity].
-- [ ] 6.5 RED: Test 2-hour minimum and 90-day maximum booking window [Spec: appointment-scheduling/Booking window].
+- [x] 6.5 RED: Test 2-hour minimum and 90-day maximum booking window [Spec: appointment-scheduling/Booking window].
 - [ ] 6.6 RED: Test sobreturno allowed only for Receptionist/Admin, beyond capacity, within cap [Spec: appointment-scheduling/Sobreturno].
 - [ ] 6.7 GREEN: Add `Appointment` entity, `BookAppointmentHandler` with `UPDLOCK,HOLDLOCK` anchor locks, `POST /api/appointments`.
 - [ ] 6.8 RED: Integration test concurrent double-booking → exactly one 201, one 409, one row [Spec: appointment-scheduling/Concurrent double-booking].
