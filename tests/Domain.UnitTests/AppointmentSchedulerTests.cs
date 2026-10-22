@@ -40,6 +40,22 @@ public class AppointmentSchedulerTests
     }
 
     [Fact]
+    public void Schedule_rejects_patient_overlap_across_professionals()
+    {
+        var patientId = Guid.NewGuid();
+        var context = new ScheduleContext(
+        [
+            new ExistingAppointment(Guid.NewGuid(), patientId, Day.AddHours(10), Day.AddHours(10).AddMinutes(30))
+        ]);
+        var request = new SchedulingRequest(patientId, ProfessionalId, Guid.NewGuid(), Day.AddHours(10).AddMinutes(10), 30, IsSobreturno: false);
+
+        var result = AppointmentScheduler.Schedule(request, context);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Appointment.PatientOverlap");
+    }
+
+    [Fact]
     public void Schedule_allows_adjacent_appointment_before_existing()
     {
         var context = new ScheduleContext(
