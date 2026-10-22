@@ -6,6 +6,7 @@ namespace MediCore.Domain.UnitTests;
 public class AppointmentSchedulerTests
 {
     private static readonly Guid ProfessionalId = Guid.NewGuid();
+    private static readonly Guid SpecialtyId = Guid.NewGuid();
     private static readonly DateTimeOffset Day = new(2026, 10, 20, 0, 0, 0, TimeSpan.Zero);
 
     [Fact]
@@ -14,8 +15,8 @@ public class AppointmentSchedulerTests
         var context = new ScheduleContext(
         [
             new ExistingAppointment(ProfessionalId, Guid.NewGuid(), Day.AddHours(10), Day.AddHours(10).AddMinutes(30))
-        ]);
-        var request = new SchedulingRequest(Guid.NewGuid(), ProfessionalId, Guid.NewGuid(), Day.AddHours(10).AddMinutes(15), 30, IsSobreturno: false);
+        ], [SpecialtyId]);
+        var request = new SchedulingRequest(Guid.NewGuid(), ProfessionalId, SpecialtyId, Day.AddHours(10).AddMinutes(15), 30, IsSobreturno: false);
 
         var result = AppointmentScheduler.Schedule(request, context);
 
@@ -29,8 +30,8 @@ public class AppointmentSchedulerTests
         var context = new ScheduleContext(
         [
             new ExistingAppointment(ProfessionalId, Guid.NewGuid(), Day.AddHours(10), Day.AddHours(10).AddMinutes(30))
-        ]);
-        var request = new SchedulingRequest(Guid.NewGuid(), ProfessionalId, Guid.NewGuid(), Day.AddHours(10).AddMinutes(30), 30, IsSobreturno: false);
+        ], [SpecialtyId]);
+        var request = new SchedulingRequest(Guid.NewGuid(), ProfessionalId, SpecialtyId, Day.AddHours(10).AddMinutes(30), 30, IsSobreturno: false);
 
         var result = AppointmentScheduler.Schedule(request, context);
 
@@ -40,14 +41,30 @@ public class AppointmentSchedulerTests
     }
 
     [Fact]
+    public void Schedule_allows_adjacent_appointment_before_existing()
+    {
+        var context = new ScheduleContext(
+        [
+            new ExistingAppointment(ProfessionalId, Guid.NewGuid(), Day.AddHours(10).AddMinutes(30), Day.AddHours(11))
+        ], [SpecialtyId]);
+        var request = new SchedulingRequest(Guid.NewGuid(), ProfessionalId, SpecialtyId, Day.AddHours(10), 30, IsSobreturno: false);
+
+        var result = AppointmentScheduler.Schedule(request, context);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Start.Should().Be(Day.AddHours(10));
+        result.Value.End.Should().Be(Day.AddHours(10).AddMinutes(30));
+    }
+
+    [Fact]
     public void Schedule_rejects_patient_overlap_across_professionals()
     {
         var patientId = Guid.NewGuid();
         var context = new ScheduleContext(
         [
             new ExistingAppointment(Guid.NewGuid(), patientId, Day.AddHours(10), Day.AddHours(10).AddMinutes(30))
-        ]);
-        var request = new SchedulingRequest(patientId, ProfessionalId, Guid.NewGuid(), Day.AddHours(10).AddMinutes(10), 30, IsSobreturno: false);
+        ], [SpecialtyId]);
+        var request = new SchedulingRequest(patientId, ProfessionalId, SpecialtyId, Day.AddHours(10).AddMinutes(10), 30, IsSobreturno: false);
 
         var result = AppointmentScheduler.Schedule(request, context);
 
@@ -56,18 +73,14 @@ public class AppointmentSchedulerTests
     }
 
     [Fact]
-    public void Schedule_allows_adjacent_appointment_before_existing()
+    public void Schedule_rejects_specialty_not_held_by_professional()
     {
-        var context = new ScheduleContext(
-        [
-            new ExistingAppointment(ProfessionalId, Guid.NewGuid(), Day.AddHours(10).AddMinutes(30), Day.AddHours(11))
-        ]);
+        var context = new ScheduleContext([], [SpecialtyId]);
         var request = new SchedulingRequest(Guid.NewGuid(), ProfessionalId, Guid.NewGuid(), Day.AddHours(10), 30, IsSobreturno: false);
 
         var result = AppointmentScheduler.Schedule(request, context);
 
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Start.Should().Be(Day.AddHours(10));
-        result.Value.End.Should().Be(Day.AddHours(10).AddMinutes(30));
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be("Appointment.SpecialtyNotHeld");
     }
 }
