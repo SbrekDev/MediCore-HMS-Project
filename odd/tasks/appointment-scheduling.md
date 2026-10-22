@@ -22,8 +22,8 @@ Quoted verbatim from `openspec/changes/core-clinical/specs/appointment-schedulin
 
 | ID | Task (openspec 6.x) | Specs | Route | Commit |
 |---|---|---|---|---|
-| T1 | 6.1 RED: Test `AppointmentScheduler` rejects professional overlap and allows adjacent appointments | S2 | inline (parent) | pending |
-| T2 | 6.2 GREEN: Implement pure domain `AppointmentScheduler.Schedule(SchedulingRequest, ScheduleContext)` | S2, S7 | inline (parent) | pending |
+| T1 | 6.1 RED: Test `AppointmentScheduler` rejects professional overlap and allows adjacent appointments | S2 | inline (parent) | `00fffc5` |
+| T2 | 6.2 GREEN: Implement pure domain `AppointmentScheduler.Schedule(SchedulingRequest, ScheduleContext)` | S2, S7 | inline (parent) | this commit |
 | T3 | 6.3 RED: Test patient overlap across professionals rejected | S3 | inline/worker | pending |
 | T4 | 6.4 RED: Test unheld specialty rejected | S4 | inline/worker | pending |
 | T5 | 6.5 RED: Test 2-hour minimum and 90-day maximum booking window | S5 | inline/worker | pending |
