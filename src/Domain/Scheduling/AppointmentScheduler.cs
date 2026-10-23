@@ -9,18 +9,22 @@ public sealed record SchedulingRequest(
     Guid SpecialtyId,
     DateTimeOffset Start,
     int DurationMinutes,
-    bool IsSobreturno);
+    bool IsSobreturno,
+    bool BookedByReceptionStaff);
 
 public sealed record ExistingAppointment(
     Guid ProfessionalId,
     Guid PatientId,
     DateTimeOffset Start,
-    DateTimeOffset End);
+    DateTimeOffset End,
+    bool IsSobreturno);
 
 public sealed record ScheduleContext(
     IReadOnlyList<ExistingAppointment> ExistingAppointments,
     IReadOnlyList<Guid> ProfessionalSpecialtyIds,
-    DateTimeOffset Now);
+    DateTimeOffset Now,
+    int DailyNormalCapacity,
+    int MaxSobreturnosPerDay);
 
 public sealed record ScheduledSlot(DateTimeOffset Start, DateTimeOffset End, bool IsSobreturno);
 
@@ -42,6 +46,11 @@ public static class AppointmentScheduler
             return Result<ScheduledSlot>.Failure(DomainError.Validation(
                 "Appointment.SpecialtyNotHeld",
                 "The professional does not hold the requested specialty."));
+        }
+
+        if (request.IsSobreturno)
+        {
+            return ScheduleSobreturno(request, context, end);
         }
 
         var overlapsProfessional = context.ExistingAppointments.Any(appointment =>
@@ -68,6 +77,42 @@ public static class AppointmentScheduler
                 "The patient already has an appointment overlapping the requested time range."));
         }
 
-        return Result<ScheduledSlot>.Success(new ScheduledSlot(request.Start, end, request.IsSobreturno));
+        return Result<ScheduledSlot>.Success(new ScheduledSlot(request.Start, end, IsSobreturno: false));
+    }
+
+    private static Result<ScheduledSlot> ScheduleSobreturno(SchedulingRequest request, ScheduleContext context, DateTimeOffset end)
+    {
+        if (!request.BookedByReceptionStaff)
+        {
+            return Result<ScheduledSlot>.Failure(DomainError.Forbidden(
+                "Appointment.SobreturnoNotAuthorized",
+                "Only reception staff (Receptionist or Admin) can book sobreturno appointments."));
+        }
+
+        var sobreturnosThatDay = context.ExistingAppointments.Count(appointment =>
+            appointment.IsSobreturno &&
+            appointment.ProfessionalId == request.ProfessionalId &&
+            appointment.Start.Date == request.Start.Date);
+
+        if (sobreturnosThatDay >= context.MaxSobreturnosPerDay)
+        {
+            return Result<ScheduledSlot>.Failure(DomainError.Conflict(
+                "Appointment.SobreturnoCapExceeded",
+                "The daily sobreturno cap for this agenda is already reached."));
+        }
+
+        var normalAppointmentsThatDay = context.ExistingAppointments.Count(appointment =>
+            !appointment.IsSobreturno &&
+            appointment.ProfessionalId == request.ProfessionalId &&
+            appointment.Start.Date == request.Start.Date);
+
+        if (normalAppointmentsThatDay < context.DailyNormalCapacity)
+        {
+            return Result<ScheduledSlot>.Failure(DomainError.Validation(
+                "Appointment.SobreturnoWithinNormalCapacity",
+                "A sobreturno can only be booked beyond the normal block capacity."));
+        }
+
+        return Result<ScheduledSlot>.Success(new ScheduledSlot(request.Start, end, IsSobreturno: true));
     }
 }
