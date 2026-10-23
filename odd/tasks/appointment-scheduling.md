@@ -27,7 +27,7 @@ Quoted verbatim from `openspec/changes/core-clinical/specs/appointment-schedulin
 | T3 | 6.3 RED: Test patient overlap across professionals rejected | S3 | inline (parent) | `316b235` |
 | T4 | 6.4 RED: Test unheld specialty rejected | S4 | inline (parent) | `4abc09d` |
 | T5 | 6.5 RED: Test 2-hour minimum and 90-day maximum booking window | S5 | inline (parent) | `2d444b9` |
-| T6 | 6.6 RED: Test sobreturno allowed only for Receptionist/Admin, beyond capacity, within cap | S6 | inline/worker | pending |
+| T6 | 6.6 RED: Test sobreturno allowed only for Receptionist/Admin, beyond capacity, within cap | S6 | inline (parent) | `2b6986e` |
 | T7 | 6.7 GREEN: Add `Appointment` entity, `BookAppointmentHandler` with `UPDLOCK,HOLDLOCK` anchor locks, `POST /api/appointments` | S1, S7 | worker + independent verify; own commit (high risk: concurrency) | pending |
 | T8 | 6.8 RED: Integration test concurrent double-booking → exactly one 201, one 409, one row | S8 | worker + independent verify; same high-risk unit as T7 | pending |
 | T9 | 6.9 GREEN: Add reschedule endpoint revalidating all rules | S9 | inline/worker | pending |
