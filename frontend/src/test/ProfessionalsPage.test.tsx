@@ -134,4 +134,50 @@ describe('ProfessionalsPage', () => {
       )
     );
   });
+  it('shows an error instead of the empty state when the professional list fails', async () => {
+    vi.spyOn(apiClient, 'get').mockRejectedValue({ response: { status: 500 } });
+
+    renderWithProviders(<ProfessionalsPage />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/unable to load professionals/i);
+    expect(screen.queryByText(/no professionals found/i)).not.toBeInTheDocument();
+  });
+
+  it('shows an error when registering a professional fails', async () => {
+    vi.spyOn(apiClient, 'get').mockImplementation((url: string) => {
+      if (url === '/professionals') return Promise.resolve({ data: [] });
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+    vi.spyOn(apiClient, 'post').mockRejectedValue({ response: { status: 500 } });
+
+    renderWithProviders(<ProfessionalsPage />);
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole('button', { name: /new professional/i }));
+    await user.type(screen.getByLabelText(/^first name$/i), 'Ana');
+    await user.type(screen.getByLabelText(/^last name$/i), 'Paz');
+    await user.type(screen.getByLabelText(/national license/i), 'MN-777');
+    await user.click(screen.getByRole('button', { name: /register professional/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/unable to register the professional/i);
+  });
+
+  it('shows an error when the specialty assignment fails', async () => {
+    vi.spyOn(apiClient, 'get').mockImplementation((url: string) => {
+      if (url === '/professionals') return Promise.resolve({ data: professionals });
+      if (url === '/specialties') return Promise.resolve({ data: specialties });
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+    vi.spyOn(apiClient, 'put').mockRejectedValue({ response: { status: 500 } });
+
+    renderWithProviders(<ProfessionalsPage />);
+    const user = userEvent.setup();
+
+    expect(await screen.findByText(/Laura Gómez/i)).toBeInTheDocument();
+    await user.click(screen.getAllByRole('button', { name: /assign specialty/i })[0]);
+    await user.selectOptions(screen.getByLabelText(/specialty/i), 's-1');
+    await user.click(screen.getByRole('button', { name: /save assignment/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/unable to assign the specialty/i);
+  });
 });

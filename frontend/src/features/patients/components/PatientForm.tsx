@@ -1,71 +1,11 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import type { CreatePatientRequest, DocumentType } from '../types';
-
-const DOCUMENT_TYPES: DocumentType[] = ['DNI', 'Pasaporte', 'DNIExtranjero', 'LC/LE'];
-
-const patientSchema = z
-  .object({
-    documentType: z.enum(['DNI', 'Pasaporte', 'DNIExtranjero', 'LC/LE']),
-    documentNumber: z.string().min(1, 'Required'),
-    firstName: z.string().min(1, 'Required'),
-    lastName: z.string().min(1, 'Required'),
-    birthDate: z
-      .string()
-      .min(1, 'Required')
-      .refine((value) => {
-        const [year, month, day] = value.split('-').map(Number);
-        if (!year || !month || !day) return false;
-        const input = new Date(Date.UTC(year, month - 1, day));
-        const now = new Date();
-        const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-        return input <= today;
-      }, 'Birth date cannot be in the future'),
-    contact: z.object({
-      mobilePhone: z.string().min(1, 'Required'),
-      landlinePhone: z.string(),
-      email: z.string(),
-    }),
-    address: z.object({
-      street: z.string().min(1, 'Required'),
-      number: z.string().min(1, 'Required'),
-      city: z.string().min(1, 'Required'),
-      province: z.string().min(1, 'Required'),
-      postalCode: z.string().min(1, 'Required'),
-    }),
-    responsiblePatientId: z.string(),
-  })
-  .refine(
-    (values) => {
-      const age = calculateAge(values.birthDate);
-      if (age === null) return true;
-      if (age < 18) {
-        return values.responsiblePatientId.length > 0;
-      }
-      return true;
-    },
-    {
-      message: 'A responsible patient is required for minors',
-      path: ['responsiblePatientId'],
-    }
-  );
-
-type PatientFormData = z.infer<typeof patientSchema>;
-
-function calculateAge(birthDate: string): number | null {
-  const [year, month, day] = birthDate.split('-').map(Number);
-  if (!year || !month || !day) return null;
-
-  const now = new Date();
-  let age = now.getFullYear() - year;
-  const currentMonth = now.getMonth() + 1;
-  const currentDay = now.getDate();
-  if (currentMonth < month || (currentMonth === month && currentDay < day)) {
-    age--;
-  }
-  return age;
-}
+import type { CreatePatientRequest } from '../types';
+import {
+  DOCUMENT_TYPES,
+  patientSchema,
+  type PatientFormData,
+} from './patientFormSchema';
 
 function emptyToNull(value: string): string | null {
   return value.trim().length > 0 ? value : null;
@@ -201,7 +141,11 @@ export function PatientForm({ serverError, onSubmit, onCancel }: PatientFormProp
 
       <div>
         <label htmlFor="responsiblePatientId">Responsible patient ID</label>
-        <input id="responsiblePatientId" {...register('responsiblePatientId')} />
+        <input
+          id="responsiblePatientId"
+          placeholder="Patient id (UUID), required for minors"
+          {...register('responsiblePatientId')}
+        />
         {errors.responsiblePatientId && <span>{errors.responsiblePatientId.message}</span>}
       </div>
 

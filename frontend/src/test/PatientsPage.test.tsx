@@ -172,4 +172,12 @@ describe('PatientsPage', () => {
     expect(screen.getByText(/Juan Perez/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /register patient/i })).not.toBeInTheDocument();
   });
+  it('shows an error instead of the empty state when the search fails', async () => {
+    vi.spyOn(apiClient, 'get').mockRejectedValue({ response: { status: 500 } });
+
+    renderWithProviders(<PatientsPage />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/unable to load patients/i);
+    expect(screen.queryByText(/no patients found/i)).not.toBeInTheDocument();
+  });
 });

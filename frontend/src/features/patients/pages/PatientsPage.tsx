@@ -12,7 +12,7 @@ export function PatientsPage() {
   const [showForm, setShowForm] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
-  const { data: patients = [], isLoading } = useQuery({
+  const { data: patients = [], isLoading, isError } = useQuery({
     queryKey: ['patients', search],
     queryFn: () => searchPatients(search),
   });
@@ -81,7 +81,11 @@ export function PatientsPage() {
         />
       )}
 
-      <PatientList patients={patients} isLoading={isLoading} />
+      {isError ? (
+        <p role="alert">Unable to load patients. Please try again.</p>
+      ) : (
+        <PatientList patients={patients} isLoading={isLoading} />
+      )}
     </div>
   );
 }

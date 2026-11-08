@@ -15,16 +15,23 @@ export function ProfessionalsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [selectedProfessional, setSelectedProfessional] = useState<ProfessionalDto | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [assignmentError, setAssignmentError] = useState<string | null>(null);
 
   const {
     data: professionals = [],
     isLoading: isLoadingProfessionals,
+    isError: isProfessionalsError,
   } = useQuery({
     queryKey: ['professionals'],
     queryFn: getProfessionals,
   });
 
-  const { data: specialties = [], isLoading: isLoadingSpecialties } = useQuery({
+  const {
+    data: specialties = [],
+    isLoading: isLoadingSpecialties,
+    isError: isSpecialtiesError,
+  } = useQuery({
     queryKey: ['specialties'],
     queryFn: getSpecialties,
     enabled: selectedProfessional !== null,
@@ -34,7 +41,11 @@ export function ProfessionalsPage() {
     mutationFn: createProfessional,
     onSuccess: () => {
       setShowForm(false);
+      setFormError(null);
       queryClient.invalidateQueries({ queryKey: ['professionals'] });
+    },
+    onError: () => {
+      setFormError('Unable to register the professional. Please try again.');
     },
   });
 
@@ -46,7 +57,11 @@ export function ProfessionalsPage() {
     }) => assignSpecialty(request.professionalId, request.specialtyId, request.payload),
     onSuccess: () => {
       setSelectedProfessional(null);
+      setAssignmentError(null);
       queryClient.invalidateQueries({ queryKey: ['professionals'] });
+    },
+    onError: () => {
+      setAssignmentError('Unable to assign the specialty. Please try again.');
     },
   });
 
@@ -70,28 +85,47 @@ export function ProfessionalsPage() {
       )}
 
       {showForm && (
-        <ProfessionalForm
-          onSubmit={(request) => create.mutate(request)}
-          onCancel={() => setShowForm(false)}
-        />
+        <>
+          {formError && <p role="alert">{formError}</p>}
+          <ProfessionalForm
+            onSubmit={(request) => create.mutate(request)}
+            onCancel={() => {
+              setShowForm(false);
+              setFormError(null);
+            }}
+          />
+        </>
       )}
 
       {selectedProfessional && (
-        <SpecialtyAssignment
-          professional={selectedProfessional}
-          specialties={specialties}
-          isLoading={isLoadingSpecialties || assign.isPending}
-          onAssign={handleAssign}
-          onCancel={() => setSelectedProfessional(null)}
-        />
+        <>
+          {assignmentError && <p role="alert">{assignmentError}</p>}
+          {isSpecialtiesError && (
+            <p role="alert">Unable to load specialties. Please try again.</p>
+          )}
+          <SpecialtyAssignment
+            professional={selectedProfessional}
+            specialties={specialties}
+            isLoading={isLoadingSpecialties || assign.isPending}
+            onAssign={handleAssign}
+            onCancel={() => {
+              setSelectedProfessional(null);
+              setAssignmentError(null);
+            }}
+          />
+        </>
       )}
 
       {!showForm && !selectedProfessional && (
-        <ProfessionalList
-          professionals={professionals}
-          isLoading={isLoadingProfessionals}
-          onAssign={setSelectedProfessional}
-        />
+        isProfessionalsError ? (
+          <p role="alert">Unable to load professionals. Please try again.</p>
+        ) : (
+          <ProfessionalList
+            professionals={professionals}
+            isLoading={isLoadingProfessionals}
+            onAssign={setSelectedProfessional}
+          />
+        )
       )}
     </div>
   );
