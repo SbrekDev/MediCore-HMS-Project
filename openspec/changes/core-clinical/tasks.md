@@ -124,10 +124,10 @@ Escalation rule: run the whole phase (orchestrator + apply + verify + JD) under 
 
 ## Phase 8: PR #8 — Frontend Patients & Professionals (~700 lines) [profile: cheap]
 
-- [ ] 8.1 RED: Test patient search/list/form with validation [Spec: patient-management].
-- [ ] 8.2 GREEN: Add `features/patients/` with RHF + zod, TanStack Query.
-- [ ] 8.3 RED: Test professional list/form and specialty assignment UI [Spec: professional-management].
-- [ ] 8.4 GREEN: Add `features/professionals/`.
+- [x] 8.1 RED: Test patient search/list/form with validation [Spec: patient-management].
+- [x] 8.2 GREEN: Add `features/patients/` with RHF + zod, TanStack Query.
+- [x] 8.3 RED: Test professional list/form and specialty assignment UI [Spec: professional-management].
+- [x] 8.4 GREEN: Add `features/professionals/`.
 
 ## Phase 9: PR #9 — Frontend Agenda & Booking (~700 lines) [profile: cheap]
 
