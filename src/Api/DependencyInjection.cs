@@ -2,6 +2,7 @@ using MediCore.Api.Authorization;
 using MediCore.Api.Endpoints;
 using MediCore.Application;
 using MediCore.Application.Agendas;
+using MediCore.Application.Appointments;
 using MediCore.Application.Patients;
 using MediCore.Application.Professionals;
 using MediCore.Application.Specialties;
@@ -31,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<CreateAgendaException.Handler>();
         services.AddScoped<DeleteAgendaException.Handler>();
         services.AddScoped<GetAvailability.Handler>();
+        services.AddScoped<BookAppointment.Handler>();
         return services;
     }
 

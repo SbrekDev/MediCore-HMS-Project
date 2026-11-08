@@ -9,8 +9,8 @@ namespace MediCore.Api.IntegrationTests;
 public class RoleAccessTests : IntegrationTestBase
 {
     [Theory]
-    [InlineData("admin@ceibos.demo", "Admin", HttpStatusCode.NoContent)]
-    [InlineData("receptionist@ceibos.demo", "Receptionist", HttpStatusCode.NoContent)]
+    [InlineData("admin@ceibos.demo", "Admin", HttpStatusCode.NotFound)]
+    [InlineData("receptionist@ceibos.demo", "Receptionist", HttpStatusCode.NotFound)]
     [InlineData("professional@ceibos.demo", "Professional", HttpStatusCode.Forbidden)]
     public async Task Booking_endpoint_allows_Admin_and_Receptionist_and_forbids_Professional(
         string email,

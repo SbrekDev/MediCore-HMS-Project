@@ -5,6 +5,7 @@ using MediCore.Infrastructure.Persistence.Audit;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace MediCore.Infrastructure.Persistence;
 
@@ -31,6 +32,30 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<Agenda> Agendas => Set<Agenda>();
     public DbSet<AvailabilityBlock> AvailabilityBlocks => Set<AvailabilityBlock>();
     public DbSet<AgendaException> AgendaExceptions => Set<AgendaException>();
+    public DbSet<Appointment> Appointments => Set<Appointment>();
+
+    public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
+    {
+        return Database.BeginTransactionAsync(cancellationToken);
+    }
+
+    public async Task<(bool ProfessionalExists, bool PatientExists)> LockAnchorRowsAsync(
+        Guid professionalId,
+        Guid patientId,
+        CancellationToken cancellationToken = default)
+    {
+        var professionalExists = await Professionals
+            .FromSqlRaw("SELECT * FROM Professionals WITH (UPDLOCK, HOLDLOCK) WHERE Id = {0}", professionalId)
+            .AsNoTracking()
+            .AnyAsync(cancellationToken);
+
+        var patientExists = await Patients
+            .FromSqlRaw("SELECT * FROM Patients WITH (UPDLOCK, HOLDLOCK) WHERE Id = {0}", patientId)
+            .AsNoTracking()
+            .AnyAsync(cancellationToken);
+
+        return (professionalExists, patientExists);
+    }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
