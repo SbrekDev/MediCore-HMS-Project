@@ -16,7 +16,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
     protected WebApplicationFactory<Program> Factory { get; private set; } = null!;
     protected bool ContainerAvailable { get; private set; }
 
-    protected async Task SeedUserAsync(string email, string password, string role)
+    protected async Task SeedUserAsync(string email, string password, string role, Guid? professionalId = null)
     {
         using var scope = Factory.Services.CreateScope();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -37,7 +37,8 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         {
             UserName = email,
             Email = email,
-            EmailConfirmed = true
+            EmailConfirmed = true,
+            ProfessionalId = professionalId
         };
 
         var createResult = await userManager.CreateAsync(user, password);

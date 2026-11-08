@@ -201,6 +201,7 @@ public class UpdateAgendaTests
     {
         public Guid? UserId => Guid.Parse("00000000-0000-0000-0000-000000000001");
         public string? UserName => "tester";
+        public Guid? ProfessionalId => null;
         public IReadOnlyList<string> Roles => ["Admin"];
     }
 }

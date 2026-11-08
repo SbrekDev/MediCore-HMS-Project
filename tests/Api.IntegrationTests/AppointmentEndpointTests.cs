@@ -396,6 +396,574 @@ public class AppointmentEndpointTests : IntegrationTestBase
         cancelledCount.Should().Be(1);
     }
 
+    [Fact]
+    public async Task Post_reschedule_to_free_slot_updates_start_and_keeps_confirmed()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        var newStart = start.AddHours(2);
+        var response = await client.PostAsJsonAsync($"/api/appointments/{appointment!.Id}/reschedule", new
+        {
+            start = newStart
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var updated = await dbContext.Appointments.SingleAsync(a => a.Id == appointment.Id);
+        updated.StartDateTime.Should().Be(newStart);
+        updated.Status.Should().Be(AppointmentStatus.Confirmed);
+    }
+
+    [Fact]
+    public async Task Post_reschedule_to_overlapping_slot_returns_conflict_and_leaves_appointment_unchanged()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, firstPatientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var first = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId = firstPatientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        first.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var secondPatientId = await CreatePatientAsync(client, "DNI", "39222333");
+        var secondStart = start.AddHours(2);
+        var second = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId = secondPatientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start = secondStart,
+            isSobreturno = false
+        });
+        second.StatusCode.Should().Be(HttpStatusCode.Created);
+        var secondAppointment = await second.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        var response = await client.PostAsJsonAsync($"/api/appointments/{secondAppointment!.Id}/reschedule", new
+        {
+            start = start.AddMinutes(15)
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.ProfessionalOverlap");
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var unchanged = await dbContext.Appointments.SingleAsync(a => a.Id == secondAppointment.Id);
+        unchanged.StartDateTime.Should().Be(secondStart);
+        unchanged.Status.Should().Be(AppointmentStatus.Confirmed);
+    }
+
+    [Fact]
+    public async Task Post_reschedule_within_two_hours_returns_bad_request_and_leaves_appointment_unchanged()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        var tooSoon = DateTimeOffset.UtcNow.AddHours(1);
+        var response = await client.PostAsJsonAsync($"/api/appointments/{appointment!.Id}/reschedule", new
+        {
+            start = tooSoon
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.OutsideBookingWindow");
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var unchanged = await dbContext.Appointments.SingleAsync(a => a.Id == appointment.Id);
+        unchanged.StartDateTime.Should().Be(start);
+        unchanged.Status.Should().Be(AppointmentStatus.Confirmed);
+    }
+
+    [Fact]
+    public async Task Post_reschedule_own_overlapping_slot_succeeds()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        var newStart = start.AddMinutes(15);
+        var response = await client.PostAsJsonAsync($"/api/appointments/{appointment!.Id}/reschedule", new
+        {
+            start = newStart
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var updated = await dbContext.Appointments.SingleAsync(a => a.Id == appointment.Id);
+        updated.StartDateTime.Should().Be(newStart);
+        updated.Status.Should().Be(AppointmentStatus.Confirmed);
+    }
+
+    [Fact]
+    public async Task Post_reschedule_cancelled_appointment_returns_conflict()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var cancelledId = Guid.NewGuid();
+
+        using (var seedScope = Factory.Services.CreateScope())
+        {
+            var seedDb = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            seedDb.Appointments.Add(new Appointment(cancelledId)
+            {
+                PatientId = patientId,
+                ProfessionalId = professionalId,
+                SpecialtyId = CardiologySpecialtyId,
+                StartDateTime = start,
+                DurationMinutes = 30,
+                Status = AppointmentStatus.Cancelled,
+                IsSobreturno = false,
+                IsLateCancellation = false,
+                CreatedAt = DateTimeOffset.UtcNow,
+                CreatedBy = Guid.Empty,
+                ModifiedAt = DateTimeOffset.UtcNow,
+                ModifiedBy = Guid.Empty
+            });
+            await seedDb.SaveChangesAsync();
+        }
+
+        var response = await client.PostAsJsonAsync($"/api/appointments/{cancelledId}/reschedule", new
+        {
+            start = start.AddHours(3)
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.InvalidState");
+    }
+
+    [Fact]
+    public async Task Post_reschedule_missing_appointment_returns_not_found()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, _, _) = await SeedScenarioAsync();
+
+        var response = await client.PostAsJsonAsync($"/api/appointments/{Guid.NewGuid()}/reschedule", new
+        {
+            start = BuildStart().AddHours(3)
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.NotFound");
+    }
+
+    [Fact]
+    public async Task Post_cancel_more_than_24h_before_start_marks_cancelled_without_late_flag()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        var response = await client.PostAsync($"/api/appointments/{appointment!.Id}/cancel", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var cancelled = await dbContext.Appointments.SingleAsync(a => a.Id == appointment.Id);
+        cancelled.Status.Should().Be(AppointmentStatus.Cancelled);
+        cancelled.IsLateCancellation.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Post_cancel_within_24h_marks_cancelled_and_flagged_late()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = DateTimeOffset.UtcNow.AddHours(3);
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        var response = await client.PostAsync($"/api/appointments/{appointment!.Id}/cancel", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var cancelled = await dbContext.Appointments.SingleAsync(a => a.Id == appointment.Id);
+        cancelled.Status.Should().Be(AppointmentStatus.Cancelled);
+        cancelled.IsLateCancellation.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Post_complete_own_appointment_marks_completed()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        await SeedUserAsync("professional-own@ceibos.demo", "TestPass123!", "Professional", professionalId);
+        var professionalToken = await LoginAsync(client, "professional-own@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", professionalToken);
+
+        var response = await client.PostAsync($"/api/appointments/{appointment!.Id}/complete", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var completed = await dbContext.Appointments.SingleAsync(a => a.Id == appointment.Id);
+        completed.Status.Should().Be(AppointmentStatus.Completed);
+    }
+
+    [Fact]
+    public async Task Post_complete_another_professionals_appointment_returns_forbidden_and_leaves_appointment_unchanged()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, adminToken, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var otherProfessionalId = await CreateProfessionalAsync(client, "Ana", "Gomez", "OTH0001");
+
+        await SeedUserAsync("professional-other@ceibos.demo", "TestPass123!", "Professional", otherProfessionalId);
+        var otherToken = await LoginAsync(client, "professional-other@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", otherToken);
+
+        var response = await client.PostAsync($"/api/appointments/{appointment!.Id}/complete", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.NotOwner");
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var unchanged = await dbContext.Appointments.SingleAsync(a => a.Id == appointment.Id);
+        unchanged.Status.Should().Be(AppointmentStatus.Confirmed);
+    }
+
+    [Fact]
+    public async Task Post_noshow_own_appointment_marks_noshow_and_increments_patient_counter()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        await SeedUserAsync("professional-noshow@ceibos.demo", "TestPass123!", "Professional", professionalId);
+        var professionalToken = await LoginAsync(client, "professional-noshow@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", professionalToken);
+
+        var response = await client.PostAsync($"/api/appointments/{appointment!.Id}/no-show", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var noShow = await dbContext.Appointments.SingleAsync(a => a.Id == appointment.Id);
+        noShow.Status.Should().Be(AppointmentStatus.NoShow);
+
+        var patient = await dbContext.Patients.SingleAsync(p => p.Id == patientId);
+        patient.NoShowCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Post_complete_cancelled_appointment_returns_conflict()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var cancelledId = Guid.NewGuid();
+
+        using (var seedScope = Factory.Services.CreateScope())
+        {
+            var seedDb = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            seedDb.Appointments.Add(new Appointment(cancelledId)
+            {
+                PatientId = patientId,
+                ProfessionalId = professionalId,
+                SpecialtyId = CardiologySpecialtyId,
+                StartDateTime = start,
+                DurationMinutes = 30,
+                Status = AppointmentStatus.Cancelled,
+                IsSobreturno = false,
+                IsLateCancellation = false,
+                CreatedAt = DateTimeOffset.UtcNow,
+                CreatedBy = Guid.Empty,
+                ModifiedAt = DateTimeOffset.UtcNow,
+                ModifiedBy = Guid.Empty
+            });
+            await seedDb.SaveChangesAsync();
+        }
+
+        await SeedUserAsync("professional-cancelled@ceibos.demo", "TestPass123!", "Professional", professionalId);
+        var professionalToken = await LoginAsync(client, "professional-cancelled@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", professionalToken);
+
+        var response = await client.PostAsync($"/api/appointments/{cancelledId}/complete", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.InvalidState");
+    }
+
+    [Fact]
+    public async Task Post_noshow_another_professionals_appointment_returns_forbidden_and_leaves_counter_unchanged()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, adminToken, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var otherProfessionalId = await CreateProfessionalAsync(client, "Ana", "Gomez", "OTH0002");
+
+        await SeedUserAsync("professional-noshow-other@ceibos.demo", "TestPass123!", "Professional", otherProfessionalId);
+        var otherToken = await LoginAsync(client, "professional-noshow-other@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", otherToken);
+
+        var response = await client.PostAsync($"/api/appointments/{appointment!.Id}/no-show", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.NotOwner");
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var unchanged = await dbContext.Appointments.SingleAsync(a => a.Id == appointment.Id);
+        unchanged.Status.Should().Be(AppointmentStatus.Confirmed);
+
+        var patient = await dbContext.Patients.SingleAsync(p => p.Id == patientId);
+        patient.NoShowCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Post_complete_by_professional_without_linked_professional_id_returns_forbidden()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        await SeedUserAsync("professional-unlinked@ceibos.demo", "TestPass123!", "Professional");
+        var unlinkedToken = await LoginAsync(client, "professional-unlinked@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", unlinkedToken);
+
+        var response = await client.PostAsync($"/api/appointments/{appointment!.Id}/complete", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.NotOwner");
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var unchanged = await dbContext.Appointments.SingleAsync(a => a.Id == appointment.Id);
+        unchanged.Status.Should().Be(AppointmentStatus.Confirmed);
+    }
+
+    [Fact]
+    public async Task Post_cancel_completed_appointment_returns_conflict()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var completedId = Guid.NewGuid();
+
+        using (var seedScope = Factory.Services.CreateScope())
+        {
+            var seedDb = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            seedDb.Appointments.Add(new Appointment(completedId)
+            {
+                PatientId = patientId,
+                ProfessionalId = professionalId,
+                SpecialtyId = CardiologySpecialtyId,
+                StartDateTime = start,
+                DurationMinutes = 30,
+                Status = AppointmentStatus.Completed,
+                IsSobreturno = false,
+                IsLateCancellation = false,
+                CreatedAt = DateTimeOffset.UtcNow,
+                CreatedBy = Guid.Empty,
+                ModifiedAt = DateTimeOffset.UtcNow,
+                ModifiedBy = Guid.Empty
+            });
+            await seedDb.SaveChangesAsync();
+        }
+
+        var response = await client.PostAsync($"/api/appointments/{completedId}/cancel", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.InvalidState");
+    }
+
+    [Fact]
+    public async Task Post_reschedule_more_than_90_days_ahead_returns_bad_request_and_leaves_appointment_unchanged()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        var tooFar = DateTimeOffset.UtcNow.AddDays(91);
+        var response = await client.PostAsJsonAsync($"/api/appointments/{appointment!.Id}/reschedule", new
+        {
+            start = tooFar
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.OutsideBookingWindow");
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var unchanged = await dbContext.Appointments.SingleAsync(a => a.Id == appointment.Id);
+        unchanged.StartDateTime.Should().Be(start);
+        unchanged.Status.Should().Be(AppointmentStatus.Confirmed);
+    }
+
     private sealed record CreateAppointmentResponse(Guid Id);
 
     private sealed record CreateProfessionalResponse(Guid ProfessionalId);

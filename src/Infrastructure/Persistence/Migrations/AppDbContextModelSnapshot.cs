@@ -305,6 +305,9 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ModifiedBy")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("NoShowCount")
+                        .HasColumnType("int");
+
                     b.Property<Guid?>("ResponsiblePatientId")
                         .HasColumnType("uniqueidentifier");
 
@@ -497,6 +500,9 @@ namespace MediCore.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
+
+                    b.Property<Guid?>("ProfessionalId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
