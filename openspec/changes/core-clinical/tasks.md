@@ -110,11 +110,11 @@ Escalation rule: run the whole phase (orchestrator + apply + verify + JD) under 
 - [x] 6.4 RED: Test unheld specialty rejected [Spec: appointment-scheduling/Specialty validity].
 - [x] 6.5 RED: Test 2-hour minimum and 90-day maximum booking window [Spec: appointment-scheduling/Booking window].
 - [x] 6.6 RED: Test sobreturno allowed only for Receptionist/Admin, beyond capacity, within cap [Spec: appointment-scheduling/Sobreturno].
-- [ ] 6.7 GREEN: Add `Appointment` entity, `BookAppointmentHandler` with `UPDLOCK,HOLDLOCK` anchor locks, `POST /api/appointments`.
-- [ ] 6.8 RED: Integration test concurrent double-booking → exactly one 201, one 409, one row [Spec: appointment-scheduling/Concurrent double-booking].
-- [ ] 6.9 GREEN: Add reschedule endpoint revalidating all rules [Spec: appointment-scheduling/Reschedule].
-- [ ] 6.10 RED: Test cancellation flags late when <24h, completion allowed only for own professional [Spec: appointment-scheduling/Cancellation, Completion].
-- [ ] 6.11 GREEN: Add `POST /api/appointments/{id}/{reschedule,cancel,complete,no-show}` and no-show counter increment.
+- [x] 6.7 GREEN: Add `Appointment` entity, `BookAppointmentHandler` with `UPDLOCK,HOLDLOCK` anchor locks, `POST /api/appointments`.
+- [x] 6.8 RED: Integration test concurrent double-booking → exactly one 201, one 409, one row [Spec: appointment-scheduling/Concurrent double-booking].
+- [x] 6.9 GREEN: Add reschedule endpoint revalidating all rules [Spec: appointment-scheduling/Reschedule].
+- [x] 6.10 RED: Test cancellation flags late when <24h, completion allowed only for own professional [Spec: appointment-scheduling/Cancellation, Completion].
+- [x] 6.11 GREEN: Add `POST /api/appointments/{id}/{reschedule,cancel,complete,no-show}` and no-show counter increment.
 
 ## Phase 7: PR #7 — Frontend Auth (~400 lines) [profile: cheap]
 
