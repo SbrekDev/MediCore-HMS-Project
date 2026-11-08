@@ -27,6 +27,7 @@ public static class DependencyInjection
                 sql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)));
 
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<AppDbContext>());
+        services.AddSingleton(TimeProvider.System);
 
         services.AddIdentityCore<ApplicationUser>(options =>
             {

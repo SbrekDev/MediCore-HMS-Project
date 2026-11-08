@@ -24,6 +24,15 @@ public class CurrentUserService : ICurrentUserService
 
     public string? UserName => _httpContextAccessor.HttpContext?.User?.Identity?.Name;
 
+    public Guid? ProfessionalId
+    {
+        get
+        {
+            var professionalIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst("professional_id")?.Value;
+            return Guid.TryParse(professionalIdClaim, out var professionalId) ? professionalId : null;
+        }
+    }
+
     public IReadOnlyList<string> Roles
     {
         get

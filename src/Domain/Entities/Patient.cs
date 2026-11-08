@@ -30,6 +30,8 @@ public class Patient : AuditableEntity<Guid>
     public ConsentStatus ConsentStatus { get; set; } = ConsentStatus.Pending;
     public DateTimeOffset? ConsentGivenAt { get; set; }
 
+    public int NoShowCount { get; set; }
+
     public bool ConsentPending => ConsentStatus == ConsentStatus.Pending;
 
     public void RecordConsent(DateTimeOffset givenAt)

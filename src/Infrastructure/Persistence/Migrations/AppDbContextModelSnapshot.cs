@@ -87,6 +87,63 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                     b.ToTable("AgendaExceptions", (string)null);
                 });
 
+            modelBuilder.Entity("MediCore.Domain.Entities.Appointment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsLateCancellation")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsSobreturno")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("ModifiedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("ModifiedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProfessionalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("SpecialtyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("StartDateTime")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatientId", "StartDateTime");
+
+                    b.HasIndex("ProfessionalId", "StartDateTime");
+
+                    b.ToTable("Appointments", (string)null);
+                });
+
             modelBuilder.Entity("MediCore.Domain.Entities.AvailabilityBlock", b =>
                 {
                     b.Property<Guid>("Id")
@@ -247,6 +304,9 @@ namespace MediCore.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid>("ModifiedBy")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("NoShowCount")
+                        .HasColumnType("int");
 
                     b.Property<Guid?>("ResponsiblePatientId")
                         .HasColumnType("uniqueidentifier");
@@ -440,6 +500,9 @@ namespace MediCore.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
+
+                    b.Property<Guid?>("ProfessionalId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");

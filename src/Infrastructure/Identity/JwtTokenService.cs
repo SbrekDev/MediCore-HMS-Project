@@ -140,6 +140,11 @@ public sealed class JwtTokenService : IJwtTokenService
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
+        if (user.ProfessionalId.HasValue)
+        {
+            claims.Add(new Claim("professional_id", user.ProfessionalId.Value.ToString()));
+        }
+
         foreach (var role in roles)
         {
             claims.Add(new Claim("role", role));
