@@ -45,5 +45,4 @@ export interface CreatePatientRequest {
     postalCode: string;
   };
   responsiblePatientId?: string | null;
-  consentGiven?: boolean;
 }
