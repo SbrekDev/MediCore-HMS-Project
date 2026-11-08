@@ -1,6 +1,16 @@
-import { Link, Outlet } from 'react-router';
+import { Link, Outlet, useNavigate } from 'react-router';
+import { useSession } from '../auth/session';
+import { logout } from '../features/auth/api';
 
 export function Layout() {
+  const session = useSession();
+  const navigate = useNavigate();
+
+  async function handleSignOut() {
+    await logout();
+    navigate('/login', { replace: true });
+  }
+
   return (
     <div>
       <header>
@@ -11,6 +21,14 @@ export function Layout() {
           <Link to="/agenda">Agenda</Link>
           <Link to="/booking">Booking</Link>
         </nav>
+        {session && (
+          <div>
+            <span data-testid="current-user">{session.email}</span>
+            <button type="button" onClick={handleSignOut}>
+              Sign out
+            </button>
+          </div>
+        )}
       </header>
       <main>
         <Outlet />

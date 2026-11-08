@@ -1,17 +1,19 @@
 import axios from 'axios';
-import { tokenStore } from '../auth/token';
+import { sessionStore } from '../auth/session';
 
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? '/api',
   headers: {
     'Content-Type': 'application/json',
   },
+  // The refresh token travels in an httpOnly cookie scoped to /api/auth.
+  withCredentials: true,
 });
 
 let refreshPromise: Promise<string> | null = null;
 
 apiClient.interceptors.request.use((config) => {
-  const token = tokenStore.get();
+  const token = sessionStore.get()?.accessToken;
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -26,17 +28,21 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;
 
+      // Single-flight: concurrent 401s share one refresh round trip.
       if (!refreshPromise) {
         refreshPromise = refreshAccessToken();
       }
 
       try {
         const newToken = await refreshPromise;
-        tokenStore.set(newToken);
+        const current = sessionStore.get();
+        if (current) {
+          sessionStore.set({ ...current, accessToken: newToken });
+        }
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
-        tokenStore.clear();
+        sessionStore.clear();
         return Promise.reject(refreshError);
       } finally {
         refreshPromise = null;
@@ -48,8 +54,7 @@ apiClient.interceptors.response.use(
 );
 
 async function refreshAccessToken(): Promise<string> {
-  // Placeholder for /api/auth/refresh call using the httpOnly refresh cookie.
-  // Single-flight is enforced by the shared refreshPromise above.
+  // Bare axios: refresh must not recurse through the 401 interceptor above.
   const response = await axios.post('/api/auth/refresh', {}, { withCredentials: true });
   return response.data.accessToken as string;
 }

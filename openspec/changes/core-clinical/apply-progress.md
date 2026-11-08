@@ -24,6 +24,19 @@
   - Evidence: `dotnet test tests/Application.UnitTests` → 2 passed (includes `SpecialtySelectionTests`).
   - Implementation: `ListSpecialties.Query(ActiveOnly: true)` filters `IsActive`; endpoint exposes `?activeOnly=true`.
 
+## Phase 7 — Frontend Auth (completed)
+
+- [x] 7.1 RED: Test login form submits credentials and stores access token [Spec: identity-access/JWT auth].
+- [x] 7.2 GREEN: Add `api/axios.ts` with in-memory token and 401 refresh single-flight interceptor.
+- [x] 7.3 GREEN: Add `<RequireRole>` guard and `/login` route.
+
+Evidence:
+- `npm test` (frontend) → 16 passed (5 files): session/role decode, login form, RequireRole, axios 401 single-flight, app routing.
+- `npm run lint` (oxlint) → clean.
+- `npm run build` (tsc -b && vite build) → success.
+- Role claims are decoded from the access token for UI shaping only; the server remains authoritative.
+- The refresh cookie is Secure + SameSite=Strict, so silent refresh needs an https dev origin (documented in `vite.config.ts`); login itself works over http.
+
 ## Work Unit Evidence
 
 | Work unit | Focused test command | Result | Runtime harness | Rollback boundary |

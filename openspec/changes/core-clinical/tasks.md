@@ -118,9 +118,9 @@ Escalation rule: run the whole phase (orchestrator + apply + verify + JD) under 
 
 ## Phase 7: PR #7 — Frontend Auth (~400 lines) [profile: cheap]
 
-- [ ] 7.1 RED: Test login form submits credentials and stores access token [Spec: identity-access/JWT auth].
-- [ ] 7.2 GREEN: Add `api/axios.ts` with in-memory token and 401 refresh single-flight interceptor.
-- [ ] 7.3 GREEN: Add `<RequireRole>` guard and `/login` route.
+- [x] 7.1 RED: Test login form submits credentials and stores access token [Spec: identity-access/JWT auth].
+- [x] 7.2 GREEN: Add `api/axios.ts` with in-memory token and 401 refresh single-flight interceptor.
+- [x] 7.3 GREEN: Add `<RequireRole>` guard and `/login` route.
 
 ## Phase 8: PR #8 — Frontend Patients & Professionals (~700 lines) [profile: cheap]
 
