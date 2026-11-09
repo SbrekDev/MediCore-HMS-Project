@@ -1063,6 +1063,130 @@ public class AppointmentEndpointTests : IntegrationTestBase
         patient.NoShowCount.Should().Be(appointmentIds.Count);
     }
 
+    [Fact]
+    public async Task Post_noshow_twice_concurrently_for_the_same_appointment_marks_it_once_and_counts_once()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        await SeedUserAsync("professional-noshow-race@ceibos.demo", "TestPass123!", "Professional", professionalId);
+        var professionalToken = await LoginAsync(client, "professional-noshow-race@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", professionalToken);
+
+        var race = await Task.WhenAll(
+            client.PostAsync($"/api/appointments/{appointment!.Id}/no-show", null),
+            client.PostAsync($"/api/appointments/{appointment!.Id}/no-show", null));
+
+        race.Count(r => r.StatusCode == HttpStatusCode.OK).Should().Be(1);
+        race.Count(r => r.StatusCode == HttpStatusCode.Conflict).Should().Be(1);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var patient = await dbContext.Patients.AsNoTracking().SingleAsync(p => p.Id == patientId);
+        patient.NoShowCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Post_noshow_writes_the_patient_counter_audit_entry()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        await SeedUserAsync("professional-noshow-audit@ceibos.demo", "TestPass123!", "Professional", professionalId);
+        var professionalToken = await LoginAsync(client, "professional-noshow-audit@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", professionalToken);
+
+        var response = await client.PostAsync($"/api/appointments/{appointment!.Id}/no-show", null);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var counterAudits = await dbContext.AuditEntries
+            .AsNoTracking()
+            .Where(e => e.EntityId == patientId && e.Action == "Updated")
+            .Select(e => e.ChangesJson)
+            .ToListAsync();
+
+        counterAudits.Should().ContainSingle();
+        counterAudits[0].Should().Contain("NoShowCount");
+    }
+
+    [Fact]
+    public async Task Post_appointment_into_a_previous_day_midnight_crossing_appointment_returns_conflict_and_creates_no_row()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        // Existing appointment starts the day before the requested slot and crosses midnight into it.
+        var crossingStart = new DateTimeOffset(DateTime.UtcNow.Date.AddDays(4).AddHours(23).AddMinutes(40), TimeSpan.Zero);
+        using (var seedScope = Factory.Services.CreateScope())
+        {
+            var seedDb = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            seedDb.Appointments.Add(new Appointment(Guid.NewGuid())
+            {
+                PatientId = patientId,
+                ProfessionalId = professionalId,
+                SpecialtyId = CardiologySpecialtyId,
+                StartDateTime = crossingStart,
+                DurationMinutes = 30,
+                Status = AppointmentStatus.Confirmed,
+                IsSobreturno = false,
+                IsLateCancellation = false,
+                CreatedAt = DateTimeOffset.UtcNow,
+                CreatedBy = Guid.Empty,
+                ModifiedAt = DateTimeOffset.UtcNow,
+                ModifiedBy = Guid.Empty
+            });
+            await seedDb.SaveChangesAsync();
+        }
+
+        var requested = new DateTimeOffset(DateTime.UtcNow.Date.AddDays(5).AddMinutes(5), TimeSpan.Zero);
+        var response = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start = requested,
+            isSobreturno = false
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.ProfessionalOverlap");
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var created = await dbContext.Appointments.AnyAsync(a => a.StartDateTime == requested);
+        created.Should().BeFalse();
+    }
+
     private sealed record CreateAppointmentResponse(Guid Id);
 
     private sealed record CreateProfessionalResponse(Guid ProfessionalId);

@@ -1,5 +1,6 @@
 using MediCore.Application.Abstractions;
 using MediCore.Domain.Common;
+using MediCore.Domain.Entities;
 using MediCore.Domain.Enums;
 using MediCore.Domain.Errors;
 using Microsoft.EntityFrameworkCore;
@@ -12,17 +13,22 @@ public static class MarkNoShow
 
     public sealed class Handler
     {
+        private const string NoShowCountIncrementChangesJson = "{\"NoShowCount\":{\"Increment\":1}}";
+
         private readonly IApplicationDbContext _context;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IAuditService _auditService;
         private readonly TimeProvider _timeProvider;
 
         public Handler(
             IApplicationDbContext context,
             ICurrentUserService currentUserService,
+            IAuditService auditService,
             TimeProvider timeProvider)
         {
             _context = context;
             _currentUserService = currentUserService;
+            _auditService = auditService;
             _timeProvider = timeProvider;
         }
 
@@ -83,6 +89,17 @@ public static class MarkNoShow
                     .ExecuteUpdateAsync(
                         setters => setters.SetProperty(p => p.NoShowCount, p => p.NoShowCount + 1),
                         cancellationToken);
+
+                // The atomic UPDATE bypasses the ChangeTracker, so the audit record of the
+                // counter change is written explicitly instead of by the AuditInterceptor.
+                await _auditService.CaptureAsync(
+                    action: "Updated",
+                    entityType: nameof(Patient),
+                    entityId: appointment.PatientId,
+                    actorId: _currentUserService.UserId,
+                    timestampUtc: now,
+                    changesJson: NoShowCountIncrementChangesJson,
+                    cancellationToken: cancellationToken);
 
                 await transaction.CommitAsync(cancellationToken);
 
