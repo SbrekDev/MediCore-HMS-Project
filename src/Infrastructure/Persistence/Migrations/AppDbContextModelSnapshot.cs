@@ -524,6 +524,10 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("UserNameIndex")
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
 
+                    b.HasIndex("ProfessionalId")
+                        .IsUnique()
+                        .HasFilter("[ProfessionalId] IS NOT NULL");
+
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
@@ -869,6 +873,14 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ProfessionalId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("MediCore.Infrastructure.Identity.ApplicationUser", b =>
+                {
+                    b.HasOne("MediCore.Domain.Entities.Professional", null)
+                        .WithMany()
+                        .HasForeignKey("ProfessionalId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("MediCore.Infrastructure.Identity.RefreshToken", b =>
