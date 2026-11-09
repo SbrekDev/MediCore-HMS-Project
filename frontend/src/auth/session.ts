@@ -62,6 +62,24 @@ export function decodeRoles(accessToken: string): string[] {
   return [];
 }
 
+/**
+ * Reads the professional_id claim from the access token payload so the UI can
+ * decide whether to offer the "My appointments" view. The server stays
+ * authoritative: this only shapes navigation, it never grants access.
+ */
+export function decodeProfessionalId(accessToken: string): string | null {
+  const payload = decodePayload(accessToken);
+  if (!payload) {
+    return null;
+  }
+
+  const claim = payload.professional_id;
+  if (typeof claim === 'string' && claim.length > 0) {
+    return claim;
+  }
+  return null;
+}
+
 function decodePayload(accessToken: string): Record<string, unknown> | null {
   const segments = accessToken.split('.');
   if (segments.length < 2) {

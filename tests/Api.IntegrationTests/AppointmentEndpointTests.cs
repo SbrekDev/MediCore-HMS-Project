@@ -1365,11 +1365,65 @@ public class AppointmentEndpointTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task Get_appointments_requires_reception_staff()
+    public async Task Get_appointments_allows_professional_to_list_only_own_appointments_including_patient_name()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, adminToken, professionalA, patientA) = await SeedScenarioAsync();
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var professionalB = await CreateProfessionalAsync(client, "Ana", "Gomez", "LST0001");
+        var assignB = await client.PutAsJsonAsync($"/api/professionals/{professionalB}/specialties/{CardiologySpecialtyId}", new { isPrimary = true });
+        assignB.EnsureSuccessStatusCode();
+        var patientB = await CreatePatientAsync(client, "DNI", "39111333");
+
+        var date = DateTimeOffset.UtcNow.Date.AddDays(3);
+        var startA = new DateTimeOffset(date.AddHours(10), TimeSpan.Zero);
+        var startB = new DateTimeOffset(date.AddHours(9), TimeSpan.Zero);
+
+        var bookingA = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId = patientA,
+            professionalId = professionalA,
+            specialtyId = CardiologySpecialtyId,
+            start = startA,
+            isSobreturno = false
+        });
+        bookingA.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var bookingB = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId = patientB,
+            professionalId = professionalB,
+            specialtyId = CardiologySpecialtyId,
+            start = startB,
+            isSobreturno = false
+        });
+        bookingB.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        await SeedUserAsync("professional-list@ceibos.demo", "TestPass123!", "Professional", professionalA);
+        var professionalToken = await LoginAsync(client, "professional-list@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", professionalToken);
+
+        var response = await client.GetAsync(
+            $"/api/appointments?from={date:yyyy-MM-dd}T00:00:00Z&to={date.AddDays(1):yyyy-MM-dd}T00:00:00Z");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var appointments = await response.Content.ReadFromJsonAsync<IReadOnlyList<AppointmentListItem>>();
+        appointments!.Should().HaveCount(1);
+        appointments.Should().OnlyContain(a => a.ProfessionalId == professionalA);
+        appointments.Single().PatientId.Should().Be(patientA);
+        appointments.Single().PatientName.Should().Be("Maria Gonzalez");
+    }
+
+    [Fact]
+    public async Task Get_appointments_professional_with_foreign_professionalId_is_forbidden()
     {
         Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
 
         var (client, _, professionalId, _) = await SeedScenarioAsync();
+
+        var otherProfessionalId = Guid.NewGuid();
 
         await SeedUserAsync("professional-list@ceibos.demo", "TestPass123!", "Professional", professionalId);
         var professionalToken = await LoginAsync(client, "professional-list@ceibos.demo", "TestPass123!");
@@ -1377,8 +1431,68 @@ public class AppointmentEndpointTests : IntegrationTestBase
 
         var date = DateTimeOffset.UtcNow.Date.AddDays(3);
         var response = await client.GetAsync(
+            $"/api/appointments?from={date:yyyy-MM-dd}T00:00:00Z&to={date.AddDays(1):yyyy-MM-dd}T00:00:00Z&professionalId={otherProfessionalId}");
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.NotOwner");
+    }
+
+    [Fact]
+    public async Task Get_appointments_professional_without_link_is_forbidden_with_not_linked_message()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, _, _) = await SeedScenarioAsync();
+
+        await SeedUserAsync("professional-unlinked@ceibos.demo", "TestPass123!", "Professional");
+        var professionalToken = await LoginAsync(client, "professional-unlinked@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", professionalToken);
+
+        var date = DateTimeOffset.UtcNow.Date.AddDays(3);
+        var response = await client.GetAsync(
             $"/api/appointments?from={date:yyyy-MM-dd}T00:00:00Z&to={date.AddDays(1):yyyy-MM-dd}T00:00:00Z");
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.NotOwner");
+        error.Message.Should().Contain("not linked to a professional");
+    }
+
+    [Fact]
+    public async Task Get_appointments_admin_and_receptionist_keep_unfiltered_access()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, adminToken, professionalId, patientId) = await SeedScenarioAsync();
+
+        var date = DateTimeOffset.UtcNow.Date.AddDays(3);
+        var start = new DateTimeOffset(date.AddHours(10), TimeSpan.Zero);
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var adminList = await client.GetAsync(
+            $"/api/appointments?from={date:yyyy-MM-dd}T00:00:00Z&to={date.AddDays(1):yyyy-MM-dd}T00:00:00Z");
+        adminList.StatusCode.Should().Be(HttpStatusCode.OK);
+        var adminAppointments = await adminList.Content.ReadFromJsonAsync<IReadOnlyList<AppointmentListItem>>();
+        adminAppointments!.Should().HaveCount(1);
+
+        await SeedUserAsync("receptionist-list@ceibos.demo", "TestPass123!", "Receptionist");
+        var receptionToken = await LoginAsync(client, "receptionist-list@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", receptionToken);
+
+        var receptionList = await client.GetAsync(
+            $"/api/appointments?from={date:yyyy-MM-dd}T00:00:00Z&to={date.AddDays(1):yyyy-MM-dd}T00:00:00Z");
+        receptionList.StatusCode.Should().Be(HttpStatusCode.OK);
+        var receptionAppointments = await receptionList.Content.ReadFromJsonAsync<IReadOnlyList<AppointmentListItem>>();
+        receptionAppointments!.Should().HaveCount(1);
     }
 
     [Fact]
@@ -1446,6 +1560,7 @@ public class AppointmentEndpointTests : IntegrationTestBase
     private sealed record AppointmentListItem(
         Guid Id,
         Guid PatientId,
+        string PatientName,
         Guid ProfessionalId,
         Guid SpecialtyId,
         DateTimeOffset Start,

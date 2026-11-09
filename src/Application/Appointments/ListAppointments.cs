@@ -1,6 +1,7 @@
 using MediCore.Application.Abstractions;
 using MediCore.Domain.Common;
 using MediCore.Domain.Enums;
+using MediCore.Domain.Errors;
 using Microsoft.EntityFrameworkCore;
 
 namespace MediCore.Application.Appointments;
@@ -10,6 +11,7 @@ public static class ListAppointments
     public sealed record AppointmentListItem(
         Guid Id,
         Guid PatientId,
+        string PatientName,
         Guid ProfessionalId,
         Guid SpecialtyId,
         DateTimeOffset Start,
@@ -30,23 +32,47 @@ public static class ListAppointments
     public sealed class Handler
     {
         private readonly IApplicationDbContext _context;
+        private readonly ICurrentUserService _currentUserService;
 
-        public Handler(IApplicationDbContext context)
+        public Handler(IApplicationDbContext context, ICurrentUserService currentUserService)
         {
             _context = context;
+            _currentUserService = currentUserService;
         }
 
         public async Task<Result<Response>> HandleAsync(
             Query query,
             CancellationToken cancellationToken = default)
         {
+            var effectiveProfessionalId = query.ProfessionalId;
+
+            if (_currentUserService.Roles.Contains("Professional"))
+            {
+                var myProfessionalId = _currentUserService.ProfessionalId;
+                if (myProfessionalId is null)
+                {
+                    return Result<Response>.Failure(DomainError.Forbidden(
+                        "Appointment.NotOwner",
+                        "This account is not linked to a professional."));
+                }
+
+                if (effectiveProfessionalId.HasValue && effectiveProfessionalId.Value != myProfessionalId.Value)
+                {
+                    return Result<Response>.Failure(DomainError.Forbidden(
+                        "Appointment.NotOwner",
+                        "You can only view your own appointments."));
+                }
+
+                effectiveProfessionalId = myProfessionalId;
+            }
+
             var queryable = _context.Appointments
                 .AsNoTracking()
                 .Where(a => a.StartDateTime >= query.From && a.StartDateTime < query.To);
 
-            if (query.ProfessionalId.HasValue)
+            if (effectiveProfessionalId.HasValue)
             {
-                queryable = queryable.Where(a => a.ProfessionalId == query.ProfessionalId.Value);
+                queryable = queryable.Where(a => a.ProfessionalId == effectiveProfessionalId.Value);
             }
 
             if (query.PatientId.HasValue)
@@ -60,17 +86,23 @@ public static class ListAppointments
             }
 
             var appointments = await queryable
-                .OrderBy(a => a.StartDateTime)
-                .Select(a => new AppointmentListItem(
-                    a.Id,
-                    a.PatientId,
-                    a.ProfessionalId,
-                    a.SpecialtyId,
-                    a.StartDateTime,
-                    a.DurationMinutes,
-                    a.Status.ToString(),
-                    a.IsSobreturno,
-                    a.IsLateCancellation))
+                .Join(
+                    _context.Patients,
+                    a => a.PatientId,
+                    p => p.Id,
+                    (a, p) => new { a, p })
+                .OrderBy(x => x.a.StartDateTime)
+                .Select(x => new AppointmentListItem(
+                    x.a.Id,
+                    x.a.PatientId,
+                    $"{x.p.FirstName} {x.p.LastName}",
+                    x.a.ProfessionalId,
+                    x.a.SpecialtyId,
+                    x.a.StartDateTime,
+                    x.a.DurationMinutes,
+                    x.a.Status.ToString(),
+                    x.a.IsSobreturno,
+                    x.a.IsLateCancellation))
                 .ToListAsync(cancellationToken);
 
             return Result<Response>.Success(new Response(appointments));
