@@ -40,6 +40,19 @@ public class AppointmentConfiguration : IEntityTypeConfiguration<Appointment>
 
         builder.HasIndex(a => new { a.PatientId, a.StartDateTime });
 
+        // Referential integrity that until now only the application enforced: an appointment
+        // must point at rows that exist, and neither the patient nor the professional can be
+        // deleted while an appointment still uses it.
+        builder.HasOne<Patient>()
+            .WithMany()
+            .HasForeignKey(a => a.PatientId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne<Professional>()
+            .WithMany()
+            .HasForeignKey(a => a.ProfessionalId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.Property(a => a.RowVersion)
             .IsRowVersion();
     }

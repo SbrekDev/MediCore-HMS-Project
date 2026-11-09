@@ -745,6 +745,21 @@ namespace MediCore.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("MediCore.Domain.Entities.Appointment", b =>
+                {
+                    b.HasOne("MediCore.Domain.Entities.Patient", null)
+                        .WithMany()
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MediCore.Domain.Entities.Professional", null)
+                        .WithMany()
+                        .HasForeignKey("ProfessionalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("MediCore.Domain.Entities.AvailabilityBlock", b =>
                 {
                     b.HasOne("MediCore.Domain.Entities.Agenda", null)
