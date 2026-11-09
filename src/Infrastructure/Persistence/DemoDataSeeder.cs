@@ -41,8 +41,29 @@ public static class DemoDataSeeder
             .Include(p => p.Specialties)
             .FirstOrDefaultAsync(p => p.NationalLicenseMN == ProfessionalLicenseMN);
 
+        // A booking is rejected unless the professional holds the requested specialty, so the
+        // demo professional needs one link or the walkthrough stops at the first appointment.
+        var specialty = await context.Specialties
+            .Where(s => s.IsActive)
+            .OrderBy(s => s.Code)
+            .FirstOrDefaultAsync();
+
         if (existing is not null)
         {
+            // A half-seeded row from an older run must be repaired, not trusted: without the
+            // link the professional is silently unbookable.
+            if (specialty is not null && existing.Specialties.Count == 0)
+            {
+                existing.Specialties.Add(new ProfessionalSpecialty
+                {
+                    ProfessionalId = existing.Id,
+                    SpecialtyId = specialty.Id,
+                    IsPrimary = true
+                });
+
+                await context.SaveChangesAsync();
+            }
+
             return existing;
         }
 
@@ -57,13 +78,6 @@ public static class DemoDataSeeder
             ModifiedAt = now,
             ModifiedBy = Guid.Empty
         };
-
-        // A booking is rejected unless the professional holds the requested specialty, so the
-        // demo professional needs one link or the walkthrough stops at the first appointment.
-        var specialty = await context.Specialties
-            .Where(s => s.IsActive)
-            .OrderBy(s => s.Code)
-            .FirstOrDefaultAsync();
 
         if (specialty is not null)
         {
@@ -118,6 +132,20 @@ public static class DemoDataSeeder
             {
                 throw new InvalidOperationException(
                     $"Failed to add demo user '{email}' to role '{role}': {string.Join(", ", assigned.Errors.Select(e => e.Description))}");
+            }
+        }
+
+        // An account created before the link existed would keep working but silently fail the
+        // ownership guard, so a missing link is repaired here.
+        if (professionalId.HasValue && user.ProfessionalId != professionalId)
+        {
+            user.ProfessionalId = professionalId;
+            var linked = await userManager.UpdateAsync(user);
+
+            if (!linked.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to link demo user '{email}' to professional '{professionalId}': {string.Join(", ", linked.Errors.Select(e => e.Description))}");
             }
         }
     }

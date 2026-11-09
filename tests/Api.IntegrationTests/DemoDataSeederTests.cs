@@ -87,6 +87,47 @@ public class DemoDataSeederTests : IntegrationTestBase
         payload.Should().Contain("professional_id");
     }
 
+    [Fact]
+    public async Task Demo_seed_repairs_a_missing_link_and_a_missing_specialty()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for the demo seed tests");
+
+        Guid professionalId;
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var user = await userManager.FindByEmailAsync(DemoDataSeeder.ProfessionalEmail);
+            professionalId = user!.ProfessionalId!.Value;
+
+            // Simulate a database seeded before the link existed: an account with no link and a
+            // professional with no specialty. Both make the account silently unusable.
+            user.ProfessionalId = null;
+            (await userManager.UpdateAsync(user)).Succeeded.Should().BeTrue();
+
+            await context.ProfessionalSpecialties
+                .Where(ps => ps.ProfessionalId == professionalId)
+                .ExecuteDeleteAsync();
+        }
+
+        await DemoDataSeeder.SeedAsync(Factory.Services);
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var repairedUser = await userManager.FindByEmailAsync(DemoDataSeeder.ProfessionalEmail);
+            repairedUser!.ProfessionalId.Should().Be(professionalId);
+
+            var links = await context.ProfessionalSpecialties
+                .CountAsync(ps => ps.ProfessionalId == professionalId);
+            links.Should().BeGreaterThan(0);
+        }
+    }
+
     private static string DecodePayload(string token)
     {
         var parts = token.Split('.');
