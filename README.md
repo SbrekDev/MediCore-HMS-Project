@@ -56,6 +56,18 @@ docker-compose.yml  # SQL Server for local dev and integration tests
    dotnet run --project src/Api
    ```
    Roles (Admin, Receptionist, Professional) are seeded idempotently at startup.
+
+   In the **Development** environment the host also seeds three demo accounts and one
+   bookable professional linked to the Professional user, which is what makes the
+   complete/no-show ownership guard reachable by hand. Development only: the password
+   below is public by design, so production never gets these accounts.
+
+   | Account | Email | Password | Role |
+   |---------|-------|----------|------|
+   | Admin | `admin@medicore.local` | `MediCore1!` | Admin |
+   | Receptionist | `recepcion@medicore.local` | `MediCore1!` | Receptionist |
+   | Professional | `profesional@medicore.local` | `MediCore1!` | Professional (linked to MN-DEMO-0001, Ana Demo) |
+
 3. **Run the frontend**
    ```bash
    cd frontend
