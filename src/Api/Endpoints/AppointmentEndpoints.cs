@@ -31,7 +31,7 @@ public static class AppointmentEndpoints
                 : MapErrorResult(result.Error.Code, result.Error.Message);
         });
 
-        group.MapGet("/", [Authorize(Policy = AuthorizationPolicies.ReceptionStaff)] async (
+        group.MapGet("/", [Authorize(Policy = AuthorizationPolicies.ClinicalStaff)] async (
             [FromQuery] string? from,
             [FromQuery] string? to,
             [FromQuery] Guid? professionalId,
