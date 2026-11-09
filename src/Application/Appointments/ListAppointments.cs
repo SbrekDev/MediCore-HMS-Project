@@ -21,7 +21,8 @@ public static class ListAppointments
     public sealed record Response(IReadOnlyList<AppointmentListItem> Appointments);
 
     public sealed record Query(
-        DateOnly Date,
+        DateTimeOffset From,
+        DateTimeOffset To,
         Guid? ProfessionalId,
         Guid? PatientId,
         AppointmentStatus? Status);
@@ -39,12 +40,9 @@ public static class ListAppointments
             Query query,
             CancellationToken cancellationToken = default)
         {
-            var dayStart = new DateTimeOffset(query.Date.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
-            var dayEnd = dayStart.AddDays(1);
-
             var queryable = _context.Appointments
                 .AsNoTracking()
-                .Where(a => a.StartDateTime >= dayStart && a.StartDateTime < dayEnd);
+                .Where(a => a.StartDateTime >= query.From && a.StartDateTime < query.To);
 
             if (query.ProfessionalId.HasValue)
             {

@@ -1236,7 +1236,8 @@ public class AppointmentEndpointTests : IntegrationTestBase
         });
         bookingA2.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var listResponse = await client.GetAsync($"/api/appointments?date={date:yyyy-MM-dd}");
+        var listResponse = await client.GetAsync(
+            $"/api/appointments?from={date:yyyy-MM-dd}T00:00:00Z&to={date.AddDays(1):yyyy-MM-dd}T00:00:00Z");
         listResponse.EnsureSuccessStatusCode();
 
         var appointments = await listResponse.Content.ReadFromJsonAsync<IReadOnlyList<AppointmentListItem>>();
@@ -1245,7 +1246,8 @@ public class AppointmentEndpointTests : IntegrationTestBase
         appointments.Select(a => a.ProfessionalId).Should().Contain(professionalA);
         appointments.Select(a => a.ProfessionalId).Should().Contain(professionalB);
 
-        var filteredResponse = await client.GetAsync($"/api/appointments?date={date:yyyy-MM-dd}&professionalId={professionalA}");
+        var filteredResponse = await client.GetAsync(
+            $"/api/appointments?from={date:yyyy-MM-dd}T00:00:00Z&to={date.AddDays(1):yyyy-MM-dd}T00:00:00Z&professionalId={professionalA}");
         filteredResponse.EnsureSuccessStatusCode();
 
         var filtered = await filteredResponse.Content.ReadFromJsonAsync<IReadOnlyList<AppointmentListItem>>();
@@ -1254,7 +1256,7 @@ public class AppointmentEndpointTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task Get_appointments_without_date_returns_bad_request_DateRequired()
+    public async Task Get_appointments_without_range_returns_bad_request_RangeRequired()
     {
         Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
 
@@ -1264,7 +1266,82 @@ public class AppointmentEndpointTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
 
         var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-        error!.Code.Should().Be("Appointment.DateRequired");
+        error!.Code.Should().Be("Appointment.RangeRequired");
+    }
+
+    [Fact]
+    public async Task Get_appointments_with_a_date_but_no_offset_returns_bad_request_RangeRequired()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, _, _) = await SeedScenarioAsync();
+
+        var response = await client.GetAsync("/api/appointments?from=2026-11-12&to=2026-11-13");
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.RangeRequired");
+    }
+
+    [Fact]
+    public async Task Get_appointments_with_an_empty_or_inverted_range_returns_bad_request_InvalidRange()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, _, _) = await SeedScenarioAsync();
+
+        var inverted = await client.GetAsync(
+            "/api/appointments?from=2026-11-13T00:00:00Z&to=2026-11-12T00:00:00Z");
+        inverted.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await inverted.Content.ReadFromJsonAsync<ErrorResponse>())!.Code
+            .Should().Be("Appointment.InvalidRange");
+
+        var empty = await client.GetAsync(
+            "/api/appointments?from=2026-11-12T00:00:00Z&to=2026-11-12T00:00:00Z");
+        empty.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await empty.Content.ReadFromJsonAsync<ErrorResponse>())!.Code
+            .Should().Be("Appointment.InvalidRange");
+    }
+
+    [Fact]
+    public async Task Get_appointments_with_the_local_day_range_includes_a_late_evening_local_slot()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        // 21:00 on the local day (UTC-03:00) is already the next UTC day at 00:00Z.
+        var localDay = DateTime.UtcNow.Date.AddDays(4);
+        var start = new DateTimeOffset(localDay.AddDays(1), TimeSpan.Zero);
+
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        // The local day D spans [D 03:00Z, D+1 03:00Z) for UTC-03:00.
+        var localRangeFrom = localDay.AddHours(3);
+        var localRangeTo = localDay.AddDays(1).AddHours(3);
+        var localRange = await client.GetAsync(
+            $"/api/appointments?from={localRangeFrom:yyyy-MM-dd'T'HH:mm:ss}Z&to={localRangeTo:yyyy-MM-dd'T'HH:mm:ss}Z");
+        localRange.EnsureSuccessStatusCode();
+
+        var inLocalDay = await localRange.Content.ReadFromJsonAsync<IReadOnlyList<AppointmentListItem>>();
+        inLocalDay!.Select(a => a.Start).Should().Contain(start);
+
+        // The UTC day D+1 starts at the same instant, so a UTC-day query would include it too;
+        // the UTC day D ends exactly there and would drop it.
+        var utcDay = await client.GetAsync(
+            $"/api/appointments?from={localDay:yyyy-MM-dd'T'HH:mm:ss}Z&to={localDay.AddDays(1):yyyy-MM-dd'T'HH:mm:ss}Z");
+        utcDay.EnsureSuccessStatusCode();
+
+        var inUtcDay = await utcDay.Content.ReadFromJsonAsync<IReadOnlyList<AppointmentListItem>>();
+        inUtcDay!.Select(a => a.Start).Should().NotContain(start);
     }
 
     [Fact]
@@ -1279,7 +1356,8 @@ public class AppointmentEndpointTests : IntegrationTestBase
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", professionalToken);
 
         var date = DateTimeOffset.UtcNow.Date.AddDays(3);
-        var response = await client.GetAsync($"/api/appointments?date={date:yyyy-MM-dd}");
+        var response = await client.GetAsync(
+            $"/api/appointments?from={date:yyyy-MM-dd}T00:00:00Z&to={date.AddDays(1):yyyy-MM-dd}T00:00:00Z");
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 

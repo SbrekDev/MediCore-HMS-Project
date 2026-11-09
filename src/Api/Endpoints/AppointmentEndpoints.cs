@@ -32,20 +32,29 @@ public static class AppointmentEndpoints
         });
 
         group.MapGet("/", [Authorize(Policy = AuthorizationPolicies.ReceptionStaff)] async (
-            [FromQuery] string? date,
+            [FromQuery] string? from,
+            [FromQuery] string? to,
             [FromQuery] Guid? professionalId,
             [FromQuery] Guid? patientId,
             [FromQuery] string? status,
             ListAppointments.Handler handler,
             CancellationToken cancellationToken) =>
         {
-            if (string.IsNullOrWhiteSpace(date) ||
-                !DateOnly.TryParseExact(date, "yyyy-MM-dd", out var parsedDate))
+            if (!TryParseInstant(from, out var rangeStart) || !TryParseInstant(to, out var rangeEnd))
             {
                 return Results.BadRequest(new
                 {
-                    code = "Appointment.DateRequired",
-                    message = "A date must be provided in yyyy-MM-dd format."
+                    code = "Appointment.RangeRequired",
+                    message = "A from and to instant must be provided, each with an explicit offset."
+                });
+            }
+
+            if (rangeEnd <= rangeStart)
+            {
+                return Results.BadRequest(new
+                {
+                    code = "Appointment.InvalidRange",
+                    message = "The to instant must be after the from instant."
                 });
             }
 
@@ -65,7 +74,7 @@ public static class AppointmentEndpoints
             }
 
             var result = await handler.HandleAsync(
-                new ListAppointments.Query(parsedDate, professionalId, patientId, parsedStatus),
+                new ListAppointments.Query(rangeStart, rangeEnd, professionalId, patientId, parsedStatus),
                 cancellationToken);
 
             return result.IsSuccess
@@ -130,6 +139,30 @@ public static class AppointmentEndpoints
         });
 
         return app;
+    }
+
+    private static readonly string[] InstantFormats =
+    [
+        "yyyy-MM-ddTHH:mm:ssK",
+        "yyyy-MM-ddTHH:mmK",
+        "yyyy-MM-ddTHH:mm:ss.FFFFFFFK"
+    ];
+
+    /// <summary>
+    /// A day is a range of instants, so the range comes from the client with explicit offsets
+    /// instead of being inferred from a bare date here (the server must not guess a time zone).
+    /// </summary>
+    private static bool TryParseInstant(string? value, out DateTimeOffset result)
+    {
+        result = default;
+
+        return !string.IsNullOrWhiteSpace(value) &&
+               DateTimeOffset.TryParseExact(
+                   value,
+                   InstantFormats,
+                   System.Globalization.CultureInfo.InvariantCulture,
+                   System.Globalization.DateTimeStyles.None,
+                   out result);
     }
 
     private static IResult MapErrorResult(string code, string message)
