@@ -131,7 +131,7 @@ Escalation rule: run the whole phase (orchestrator + apply + verify + JD) under 
 
 ## Phase 9: PR #9 — Frontend Agenda & Booking (~700 lines) [profile: cheap]
 
-- [ ] 9.1 RED: Test agenda block editor and exception UI [Spec: agenda-management].
-- [ ] 9.2 GREEN: Add `features/agenda/`.
+- [x] 9.1 RED: Test agenda block editor and exception UI [Spec: agenda-management].
+- [x] 9.2 GREEN: Add `features/agenda/`.
 - [ ] 9.3 RED: Test booking form validates window/overlap/specialty via mocked API [Spec: appointment-scheduling].
 - [ ] 9.4 GREEN: Add `features/booking/` with availability query and appointment lifecycle actions.
