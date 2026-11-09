@@ -1,6 +1,8 @@
+import type { ReactElement } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router';
 import { Layout } from '../components/Layout';
 import { RequireRole } from '../auth/RequireRole';
+import { useSession } from '../auth/session';
 import { LoginPage } from '../features/auth/pages/LoginPage';
 import { PatientsPage } from '../features/patients/pages/PatientsPage';
 import { ProfessionalsPage } from '../features/professionals/pages/ProfessionalsPage';
@@ -13,6 +15,16 @@ import { MyAppointmentsPage } from '../features/my-appointments/pages/MyAppointm
 const RECEPTION_STAFF = ['Admin', 'Receptionist'] as const;
 const CLINICAL_STAFF = ['Admin', 'Receptionist', 'Professional'] as const;
 const ADMIN_ONLY = ['Admin'] as const;
+
+// The index route has to land somewhere the reader can actually open: a professional
+// gets 403 on /patients, which used to make the "Today" link a dead end.
+function IndexRedirect(): ReactElement {
+  const session = useSession();
+  const canOpenPatients =
+    session?.roles.some((role) => role === 'Admin' || role === 'Receptionist') ?? false;
+
+  return <Navigate to={canOpenPatients ? '/patients' : '/my-appointments'} replace />;
+}
 
 export const routes = [
   {
@@ -27,7 +39,7 @@ export const routes = [
       </RequireRole>
     ),
     children: [
-      { index: true, element: <Navigate to="/patients" replace /> },
+      { index: true, element: <IndexRedirect /> },
       {
         path: 'patients',
         element: (

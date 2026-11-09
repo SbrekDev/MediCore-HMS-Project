@@ -79,7 +79,7 @@ export function Layout(): ReactElement {
             Today
           </NavItem>
 
-          <NavLabel>Front desk</NavLabel>
+          {(canViewPatients || canViewBooking) && <NavLabel>Front desk</NavLabel>}
           {canViewPatients && (
             <NavItem to="/patients" icon={<PatientsIcon />}>
               Patients
@@ -91,7 +91,7 @@ export function Layout(): ReactElement {
             </NavItem>
           )}
 
-          <NavLabel>Clinical</NavLabel>
+          {(canViewAgenda || professionalId) && <NavLabel>Clinical</NavLabel>}
           {canViewAgenda && (
             <NavItem to="/agenda" icon={<AgendaIcon />}>
               Agenda
@@ -103,7 +103,7 @@ export function Layout(): ReactElement {
             </NavItem>
           )}
 
-          <NavLabel>Administration</NavLabel>
+          {canViewProfessionals && <NavLabel>Administration</NavLabel>}
           {canViewProfessionals && (
             <NavItem to="/professionals" icon={<ProfessionalsIcon />}>
               Professionals
