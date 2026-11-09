@@ -1284,6 +1284,26 @@ public class AppointmentEndpointTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Get_appointments_with_an_instant_without_offset_returns_bad_request_RangeRequired()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, _, _) = await SeedScenarioAsync();
+
+        // A K-style format accepts a missing offset and assumes the server zone, which would
+        // silently guess what the caller meant.
+        var withoutOffset = await client.GetAsync(
+            "/api/appointments?from=2026-11-12T00:00:00&to=2026-11-13T00:00:00");
+        withoutOffset.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await withoutOffset.Content.ReadFromJsonAsync<ErrorResponse>())!.Code
+            .Should().Be("Appointment.RangeRequired");
+
+        var withOffset = await client.GetAsync(
+            "/api/appointments?from=2026-11-12T00:00:00-03:00&to=2026-11-13T00:00:00-03:00");
+        withOffset.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task Get_appointments_with_an_empty_or_inverted_range_returns_bad_request_InvalidRange()
     {
         Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");

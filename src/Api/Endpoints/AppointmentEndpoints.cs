@@ -157,12 +157,34 @@ public static class AppointmentEndpoints
         result = default;
 
         return !string.IsNullOrWhiteSpace(value) &&
+               HasExplicitOffset(value) &&
                DateTimeOffset.TryParseExact(
                    value,
                    InstantFormats,
                    System.Globalization.CultureInfo.InvariantCulture,
                    System.Globalization.DateTimeStyles.None,
                    out result);
+    }
+
+    /// <summary>
+    /// <c>K</c> matches an empty offset, and <see cref="DateTimeOffset.TryParseExact(string?, string[]?, IFormatProvider?, DateTimeStyles, out DateTimeOffset)"/>
+    /// then fills it in from the server's zone. That is the same guess refused above, one layer
+    /// down, so the offset has to be present in the text itself.
+    /// </summary>
+    private static bool HasExplicitOffset(string value)
+    {
+        var timeStart = value.IndexOf('T', StringComparison.Ordinal);
+
+        if (timeStart < 0 || timeStart + 1 >= value.Length)
+        {
+            return false;
+        }
+
+        var time = value.AsSpan(timeStart + 1);
+
+        // Neither '+' nor '-' can appear in the time-of-day part, so either one there is the
+        // offset. A trailing 'Z' is the UTC designator form of the same thing.
+        return time[^1] is 'Z' or 'z' || time.Contains('+') || time.Contains('-');
     }
 
     private static IResult MapErrorResult(string code, string message)
