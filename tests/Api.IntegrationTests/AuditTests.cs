@@ -47,7 +47,12 @@ public class AuditTests : IntegrationTestBase
 
         using var scope = Factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var auditEntry = await context.AuditEntries.FirstOrDefaultAsync();
+        // Scoped to the patient row on purpose: startup seeding writes its own Professional
+        // entry, so "the first row in the table" is neither this mutation's nor deterministic.
+        var auditEntry = await context.AuditEntries
+            .Where(e => e.EntityType == "Patient")
+            .OrderByDescending(e => e.TimestampUtc)
+            .FirstOrDefaultAsync();
 
         auditEntry.Should().NotBeNull();
         auditEntry!.Action.Should().Be("Created");

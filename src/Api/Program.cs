@@ -30,6 +30,12 @@ using (var scope = app.Services.CreateScope())
         await DbSeeder.SeedRolesAsync(scope.ServiceProvider);
         await DbSeeder.SeedSpecialtiesAsync(dbContext);
         await DbSeeder.SeedInsurersAsync(dbContext);
+
+        // Demo accounts carry a published password, so they must never reach production.
+        if (app.Environment.IsDevelopment())
+        {
+            await DemoDataSeeder.SeedAsync(scope.ServiceProvider);
+        }
     }
     catch (Exception ex)
     {
