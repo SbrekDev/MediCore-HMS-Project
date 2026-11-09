@@ -17,6 +17,14 @@ const professionals: ProfessionalDto[] = [
   },
 ];
 
+const otherProfessional: ProfessionalDto = {
+  id: 'prof-2',
+  firstName: 'Roberto',
+  lastName: 'Fernández',
+  nationalLicenseMN: 'MN-99999',
+  provincialLicenses: [],
+};
+
 const exception: AgendaExceptionDto = {
   id: 'exc-1',
   date: '2026-12-25',
@@ -160,9 +168,19 @@ describe('AgendaPage', () => {
     });
   });
 
-  it('deletes an exception using the id returned by the GET', async () => {
-    mockGet(() => agendaFixture({ exceptions: [exception] }));
-    const remove = vi.spyOn(apiClient, 'delete').mockResolvedValue({ data: undefined });
+  it('deletes an exception using the id returned by the GET and drops it from the list', async () => {
+    let current = agendaFixture({ exceptions: [exception] });
+
+    vi.spyOn(apiClient, 'get').mockImplementation((url: string) => {
+      if (url === '/professionals') return Promise.resolve({ data: professionals });
+      if (url === '/professionals/prof-1/agenda') return Promise.resolve({ data: current });
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+
+    const remove = vi.spyOn(apiClient, 'delete').mockImplementation((url: string) => {
+      current = agendaFixture();
+      return Promise.resolve({ data: undefined, url });
+    });
 
     await openAgendaForLaura();
 
@@ -172,6 +190,48 @@ describe('AgendaPage', () => {
 
     await waitFor(() => expect(remove).toHaveBeenCalledTimes(1));
     expect(remove).toHaveBeenCalledWith('/professionals/prof-1/agenda/exceptions/exc-1');
+    // The list has to lose the row, not only the request be made.
+    await waitFor(() => expect(screen.queryByText('Christmas')).not.toBeInTheDocument());
+  });
+
+  it('drops the unsaved exception values when the professional changes', async () => {
+    vi.spyOn(apiClient, 'get').mockImplementation((url: string) => {
+      if (url === '/professionals') {
+        return Promise.resolve({ data: [...professionals, otherProfessional] });
+      }
+      if (url === '/professionals/prof-1/agenda') return Promise.resolve({ data: agendaFixture() });
+      if (url === '/professionals/prof-2/agenda') {
+        return Promise.resolve({
+          data: agendaFixture({
+            professionalId: 'prof-2',
+            blocks: [{ dayOfWeek: 'Tuesday', start: '09:00', end: '13:00' }],
+          }),
+        });
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+    const post = vi.spyOn(apiClient, 'post');
+
+    await openAgendaForLaura();
+
+    const user = userEvent.setup();
+
+    // Visiting the second professional first is what caches their agenda, so returning
+    // to the first one renders from cache without unmounting the editors.
+    await user.selectOptions(screen.getByLabelText(/professional/i), 'prof-2');
+    expect(await screen.findByLabelText(/start 1/i)).toHaveValue('09:00');
+
+    fireEvent.change(screen.getByLabelText(/exception date/i), {
+      target: { value: '2026-12-24' },
+    });
+    await user.type(screen.getByLabelText(/reason/i), 'Roberto private note');
+
+    await user.selectOptions(screen.getByLabelText(/professional/i), 'prof-1');
+
+    expect(await screen.findByLabelText(/start 1/i)).toHaveValue('08:00');
+    expect(screen.getByLabelText(/exception date/i)).toHaveValue('');
+    expect(screen.getByLabelText(/reason/i)).toHaveValue('');
+    expect(post).not.toHaveBeenCalled();
   });
 
   it('surfaces a 403 from the API instead of failing silently', async () => {

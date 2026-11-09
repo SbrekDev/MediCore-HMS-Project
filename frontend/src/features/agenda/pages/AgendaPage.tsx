@@ -132,7 +132,10 @@ export function AgendaPage() {
           {deleteError && <p role="alert">{deleteError}</p>}
 
           <AgendaExceptionsEditor
-            key={exceptionFormKey}
+            // Keyed by professional as well: returning to an already cached agenda does
+            // not unmount the editors, so the form would otherwise keep the previous
+            // professional's unsaved date, window and reason.
+            key={`${professionalId}:${exceptionFormKey}`}
             agenda={agenda}
             isAdding={addException.isPending}
             isDeleting={removeException.isPending}
