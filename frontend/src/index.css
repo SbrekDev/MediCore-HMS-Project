@@ -1,17 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink: #0c1517;
-  --color-nav: #0c1517;
-  --color-nav-hover: #16262a;
-  --color-nav-active: #0d9488;
+  --color-ink: #2b3d39;
 
-  --color-canvas: #f2f5f4;
+  /* The shell reads as a soft surface, not a dark block: the sidebar is a light
+     tint of the brand instead of near-black, which keeps contrast low. */
+  --color-sidebar: #f5f9f8;
+  --color-sidebar-hover: #e9f2f0;
+  --color-sidebar-ink: #45605c;
+
+  --color-canvas: #f6f9f8;
   --color-card: #ffffff;
-  --color-line: #dde5e3;
-  --color-line-strong: #ccd8d5;
+  --color-line: #e4ecea;
+  --color-line-strong: #d3e0dd;
 
-  --color-text: #12221f;
+  --color-text: #24352f;
   --color-muted: #5c6f6c;
   --color-muted-2: #8d9d9a;
 
@@ -32,7 +35,7 @@
   --radius-control: 9px;
 
   --shadow-card:
-    0 1px 2px rgba(9, 26, 24, 0.05), 0 8px 24px -12px rgba(9, 26, 24, 0.2);
+    0 1px 2px rgba(9, 26, 24, 0.04), 0 6px 18px -14px rgba(9, 26, 24, 0.18);
 
   --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, Consolas, monospace;

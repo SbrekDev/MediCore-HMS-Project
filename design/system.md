@@ -6,13 +6,12 @@ Status: **current.** Synchronized from `frontend/src/index.css` after the redesi
 
 | Token | Value | Usage |
 |---|---|---|
-| `--color-ink` / `--color-nav` | `#0c1517` | sidebar and app chrome |
-| `--color-nav-hover` | `#16262a` | sidebar item hover |
-| `--color-nav-active` | `#0d9488` | current sidebar item |
-| `--color-canvas` | `#f2f5f4` | page background |
+| `--color-ink` | `#2b3d39` | strongest neutral, rarely used |
+| `--color-sidebar` / `--color-sidebar-hover` / `--color-sidebar-ink` | `#f5f9f8` / `#e9f2f0` / `#45605c` | sidebar surface, hover, resting text |
+| `--color-canvas` | `#f6f9f8` | page background |
 | `--color-card` | `#ffffff` | cards, tables, dialogs |
-| `--color-line` / `--color-line-strong` | `#dde5e3` / `#ccd8d5` | dividers, input borders |
-| `--color-text` / `--color-muted` / `--color-muted-2` | `#12221f` / `#5c6f6c` / `#8d9d9a` | body, secondary, tertiary text |
+| `--color-line` / `--color-line-strong` | `#e4ecea` / `#d3e0dd` | dividers, input borders |
+| `--color-text` / `--color-muted` / `--color-muted-2` | `#24352f` / `#5c6f6c` / `#8d9d9a` | body, secondary, tertiary text |
 | `--color-brand` / `--color-brand-ink` / `--color-brand-wash` | `#0d9488` / `#0b7c72` / `#e3f3f1` | primary action, links, selection |
 | `--color-ok` / `--color-ok-wash` | `#1a7f43` / `#e7f4ec` | completed, success |
 | `--color-warn` / `--color-warn-wash` | `#a15c07` / `#fcf2e2` | sobreturno, warning |
@@ -31,12 +30,12 @@ Scale in use (Tailwind defaults, no custom overrides): page title `text-[17px]`/
 ## Radius, shadow, spacing
 
 - `--radius-card` `14px` for cards and panels; `--radius-control` `9px` for buttons and inputs; `999px` for pills.
-- `--shadow-card`: `0 1px 2px rgba(9,26,24,.05), 0 8px 24px -12px rgba(9,26,24,.20)`.
+- `--shadow-card`: `0 1px 2px rgba(9,26,24,.04), 0 6px 18px -14px rgba(9,26,24,.18)` — deliberately soft.
 - Spacing: Tailwind default scale, in practice `gap-4`/`gap-5` between sections, `p-4`/`p-6` inside cards.
 
 ## Component rules
-- Shell: fixed 248px sidebar (`lg:` breakpoint and up, 72px icon rail below), 64px topbar, content on `canvas` with `p-6`.
-- Nav: icons are inline SVG 16–19px, stroke 1.7, `aria-hidden`; the active item uses `aria-current="page"` and the brand wash/underline.
+- Shell: fixed 272px sidebar (`lg:` breakpoint and up, 72px icon rail below), 64px topbar, content on `canvas` with `p-6`.
+- Nav: **light sidebar** (`--color-sidebar`) with a right border, not a dark block; icons are inline SVG 16–19px, stroke 1.7, `aria-hidden`; the active item uses `aria-current="page"` with a brand wash and brand-ink text.
 - Cards: one `border border-line`, `rounded-card`, `bg-card`, `shadow-card`; never nested more than one level.
 - Tables: uppercase `text-[11px]` headers on `bg-card`, rows separated by `border-line`, hover `bg-canvas`.
 - Forms: label above field, `rounded-control`, `border-line`, focus ring in brand at 45% alpha, errors as `text-danger` plus `role="alert"`.

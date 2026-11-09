@@ -48,7 +48,7 @@ export function Layout(): ReactElement {
   }
 
   return (
-    <div className="grid min-h-svh grid-cols-[72px_1fr] bg-canvas text-text lg:grid-cols-[248px_1fr]">
+    <div className="grid min-h-svh grid-cols-[72px_1fr] bg-canvas text-text lg:grid-cols-[272px_1fr]">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50 focus:rounded-control focus:bg-card focus:px-3 focus:py-2 focus:text-text"
@@ -56,19 +56,19 @@ export function Layout(): ReactElement {
         Skip to content
       </a>
 
-      <aside className="flex flex-col gap-6 bg-nav px-4 py-5 text-[#c3d2cf]">
+      <aside className="flex flex-col gap-6 border-r border-line bg-sidebar px-4 py-5 text-sidebar-ink">
         <div className="flex items-center gap-2.5 px-2 pt-1">
           <div
-            className="grid h-[34px] w-[34px] place-items-center rounded-[10px] bg-gradient-to-br from-brand to-brand-ink text-[15px] font-bold text-white"
+            className="grid h-[34px] w-[34px] place-items-center rounded-[10px] bg-brand text-[15px] font-bold text-white"
             aria-hidden="true"
           >
             M
           </div>
           <div className="sr-only lg:not-sr-only lg:static">
-            <p className="text-[15px] font-semibold tracking-wide text-[#f8fafc]">
+            <p className="text-[15px] font-semibold tracking-wide text-text">
               MediCore HMS
             </p>
-            <p className="text-[11px] uppercase tracking-widest text-[#7f9a96]">
+            <p className="text-[11px] uppercase tracking-widest text-muted-2">
               Sanatorio Los Ceibos
             </p>
           </div>
@@ -111,16 +111,16 @@ export function Layout(): ReactElement {
           )}
         </nav>
 
-        <div className="mt-auto flex items-center gap-2.5 border-t border-[#16302f] pt-3.5">
+        <div className="mt-auto flex items-center gap-2.5 border-t border-line pt-3.5">
           <div
-            className="grid h-8 w-8 place-items-center rounded-full bg-blue-800 text-xs font-bold text-blue-100"
+            className="grid h-8 w-8 place-items-center rounded-full bg-brand-wash text-xs font-bold text-brand-ink"
             aria-hidden="true"
           >
             {initials(session.email)}
           </div>
           <div className="sr-only lg:not-sr-only lg:static">
-            <p className="text-[13px] text-[#e6efed]">{session.email}</p>
-            <p className="text-[11px] text-[#7f9a96]">
+            <p className="text-[13px] text-text">{session.email}</p>
+            <p className="text-[11px] text-muted-2">
               {session.roles.join(', ')}
             </p>
           </div>
@@ -181,15 +181,15 @@ function NavItem({ to, icon, children, end }: NavItemProps): ReactElement {
       className={({ isActive }) =>
         `flex items-center justify-center gap-2.5 rounded-control px-2.5 py-2 text-[13.5px] transition-colors lg:justify-start ${
           isActive
-            ? 'bg-nav-active font-semibold text-white'
-            : 'text-[#b8cbc7] hover:bg-nav-hover hover:text-white'
+            ? 'bg-brand-wash font-semibold text-brand-ink'
+            : 'text-sidebar-ink hover:bg-sidebar-hover hover:text-text'
         }`
       }
     >
       {({ isActive }) => (
         <>
           <span
-            className={isActive ? 'text-white' : 'text-[#7f9a96]'}
+            className={isActive ? 'text-brand' : 'text-muted-2'}
             aria-hidden="true"
           >
             {icon}

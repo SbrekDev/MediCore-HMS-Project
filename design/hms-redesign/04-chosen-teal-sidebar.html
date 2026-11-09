@@ -120,6 +120,30 @@
     .grid{grid-template-columns:1fr}
     .kpis{grid-template-columns:repeat(2,1fr)}
   }
+
+  /* Revision (user feedback): wider sidebar and a lighter, lower-contrast shell. */
+  .shell{grid-template-columns:272px 1fr}
+  body{color:#24352f;background:#f6f9f8}
+  .side{background:#f5f9f8;color:#45605c;border-right:1px solid #e4ecea}
+  .brand .mark{background:#0d9488}
+  .brand b{color:#24352f}
+  .brand small{color:#8d9d9a}
+  .nav a{color:#45605c}
+  .nav a svg{stroke:#8d9d9a}
+  .nav a:hover{background:#e9f2f0;color:#24352f}
+  .nav a:hover svg{stroke:#45605c}
+  .nav a[aria-current="page"]{background:#e3f3f1;color:#0b7c72}
+  .nav a[aria-current="page"] svg{stroke:#0b7c72}
+  .nav .label{color:#8d9d9a}
+  .side .foot{border-top:1px solid #e4ecea}
+  .side .foot b{color:#24352f}
+  .side .foot small{color:#8d9d9a}
+  .avatar{background:#e3f3f1;color:#0b7c72}
+  .card,.kpi{border-color:#e4ecea;box-shadow:0 1px 2px rgba(9,26,24,.04),0 6px 18px -14px rgba(9,26,24,.18)}
+  .top{border-bottom-color:#e4ecea}
+  thead th{background:#f8faf9;border-bottom-color:#e4ecea;color:#8d9d9a}
+  tbody td{border-bottom-color:#eef3f1}
+  @media (max-width:1100px){.shell{grid-template-columns:72px 1fr}}
 </style>
 </head>
 <body>
