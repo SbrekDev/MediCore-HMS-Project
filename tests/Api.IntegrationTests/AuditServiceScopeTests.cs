@@ -62,4 +62,70 @@ public class AuditServiceScopeTests : IntegrationTestBase
             .AnyAsync(s => s.Code == "PROBE-UNSAVED");
         specialtyLeaked.Should().BeFalse("auditing must not commit another unit of work");
     }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task An_audit_row_joins_the_callers_transaction(bool commit)
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for the audit scope test");
+
+        var entityId = Guid.NewGuid();
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var auditService = scope.ServiceProvider.GetRequiredService<IAuditService>();
+
+            await using var transaction = await context.Database.BeginTransactionAsync();
+            await auditService.CaptureAsync(
+                "Updated", "Patient", entityId, actorId: null,
+                timestampUtc: DateTimeOffset.UtcNow, changesJson: "{}");
+
+            if (commit)
+            {
+                await transaction.CommitAsync();
+            }
+            else
+            {
+                await transaction.RollbackAsync();
+            }
+        }
+
+        using var verificationScope = Factory.Services.CreateScope();
+        var verificationContext = verificationScope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // The audit row must live or die with the change it describes, not on its own.
+        (await verificationContext.AuditEntries.CountAsync(e => e.EntityId == entityId))
+            .Should().Be(commit ? 1 : 0);
+    }
+
+    [Fact]
+    public async Task The_audit_insert_is_parameterized_and_persists_nulls()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for the audit scope test");
+
+        var entityId = Guid.NewGuid();
+        const string hostile = "x' OR 1=1--";
+
+        using (var scope = Factory.Services.CreateScope())
+        {
+            var auditService = scope.ServiceProvider.GetRequiredService<IAuditService>();
+
+            await auditService.CaptureAsync(
+                hostile, "Patient", entityId, actorId: null,
+                timestampUtc: DateTimeOffset.UtcNow, changesJson: null);
+        }
+
+        using var verificationScope = Factory.Services.CreateScope();
+        var verificationContext = verificationScope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var entry = await verificationContext.AuditEntries.SingleAsync(e => e.EntityId == entityId);
+        entry.Action.Should().Be(hostile);
+        entry.ActorUserId.Should().BeNull();
+        entry.ChangesJson.Should().BeNull();
+
+        // The table is still there, which the interpolated insert must guarantee.
+        (await verificationContext.AuditEntries.CountAsync()).Should().BeGreaterThan(0);
+    }
 }

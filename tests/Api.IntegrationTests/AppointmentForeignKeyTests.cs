@@ -1,3 +1,6 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json;
 using FluentAssertions;
 using MediCore.Api.IntegrationTests.Infrastructure;
 using MediCore.Domain.Entities;
@@ -53,25 +56,79 @@ public class AppointmentForeignKeyTests : IntegrationTestBase
     }
 
     [Fact]
-    public void The_appointment_foreign_keys_restrict_deletes()
+    public async Task A_referenced_patient_and_professional_cannot_be_deleted()
     {
         Skip.IfNot(ContainerAvailable, "SQL Server container is required for the appointment FK tests");
+
+        using var client = Factory.CreateClient();
+        var login = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { email = "admin@medicore.local", password = "MediCore1!" });
+        login.EnsureSuccessStatusCode();
+        var token = (await login.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("accessToken").GetString();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var patient = await client.PostAsJsonAsync("/api/patients", new
+        {
+            documentType = "DNI",
+            documentNumber = "41999888",
+            firstName = "Jorge",
+            lastName = "Prueba",
+            birthDate = new DateTimeOffset(1978, 3, 2, 0, 0, 0, TimeSpan.Zero),
+            contact = new
+            {
+                mobilePhone = "+54 9 11 5555-5555",
+                landlinePhone = (string?)null,
+                email = (string?)null
+            },
+            address = new
+            {
+                street = "Calle Falsa",
+                number = "742",
+                city = "Buenos Aires",
+                province = "CABA",
+                postalCode = "C1000"
+            }
+        });
+        patient.EnsureSuccessStatusCode();
+        var patientId = (await patient.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("patientId").GetGuid();
 
         using var scope = Factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var patientForeignKey = context.Model
-            .FindEntityType(typeof(Appointment))!
-            .GetForeignKeys()
-            .Single(fk => fk.Properties.Any(p => p.Name == nameof(Appointment.PatientId)));
+        var now = DateTimeOffset.UtcNow;
+        var professional = new Professional(Guid.NewGuid())
+        {
+            FirstName = "Sin",
+            LastName = "Usuario",
+            NationalLicenseMN = "MN-FK-PROBE",
+            CreatedAt = now,
+            CreatedBy = Guid.Empty,
+            ModifiedAt = now,
+            ModifiedBy = Guid.Empty
+        };
+        context.Professionals.Add(professional);
 
-        var professionalForeignKey = context.Model
-            .FindEntityType(typeof(Appointment))!
-            .GetForeignKeys()
-            .Single(fk => fk.Properties.Any(p => p.Name == nameof(Appointment.ProfessionalId)));
+        var appointment = await NewAppointmentAsync(context, patientId: patientId, professionalId: professional.Id);
+        context.Appointments.Add(appointment);
+        await context.SaveChangesAsync();
 
-        patientForeignKey.DeleteBehavior.Should().Be(DeleteBehavior.Restrict);
-        professionalForeignKey.DeleteBehavior.Should().Be(DeleteBehavior.Restrict);
+        var deletePatient = async () => await context.Database
+            .ExecuteSqlInterpolatedAsync($"DELETE FROM Patients WHERE Id = {patientId}");
+        var patientDelete = await deletePatient.Should().ThrowAsync<Microsoft.Data.SqlClient.SqlException>();
+        patientDelete.Which.Message.Should().Contain("FK_Appointments_Patients_PatientId");
+
+        var deleteProfessional = async () => await context.Database
+            .ExecuteSqlInterpolatedAsync($"DELETE FROM Professionals WHERE Id = {professional.Id}");
+        var professionalDelete = await deleteProfessional.Should().ThrowAsync<Microsoft.Data.SqlClient.SqlException>();
+        professionalDelete.Which.Message.Should().Contain("FK_Appointments_Professionals_ProfessionalId");
+
+        // Nothing was removed from under the appointment.
+        var verificationScope = Factory.Services.CreateScope();
+        var verificationContext = verificationScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        (await verificationContext.Patients.AnyAsync(p => p.Id == patientId)).Should().BeTrue();
+        (await verificationContext.Professionals.AnyAsync(p => p.Id == professional.Id)).Should().BeTrue();
+        (await verificationContext.Appointments.AnyAsync(a => a.Id == appointment.Id)).Should().BeTrue();
     }
 
     /// <summary>
