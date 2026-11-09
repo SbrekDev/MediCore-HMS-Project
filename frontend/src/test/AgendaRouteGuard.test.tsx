@@ -53,7 +53,7 @@ describe('/agenda route guard', () => {
 
     renderAt('/agenda');
 
-    expect(await screen.findByRole('link', { name: 'Patients' })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: 'Today' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Agenda' })).not.toBeInTheDocument();
   });
 

@@ -1,9 +1,10 @@
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vitest/config'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   server: {
     // Dev proxy to the API (https profile, launchSettings.json:7093).
     // The refresh cookie is Secure + SameSite=Strict + path=/api/auth, so it is

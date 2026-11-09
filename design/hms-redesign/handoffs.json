@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "chosen": "04-chosen-teal-sidebar.html",
+  "handoffs": {
+    "04-chosen-teal-sidebar.html": {
+      "status": "in_progress",
+      "queued": false,
+      "sentAt": "2026-11-09T19:01:29.491Z",
+      "startedAt": "2026-11-09T19:01:33.912Z",
+      "implementedAt": null,
+      "note": "Starting T1: Tailwind v4, design tokens and the app shell.",
+      "previewUrl": "http://localhost:5173/"
+    }
+  }
+}

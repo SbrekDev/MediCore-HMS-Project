@@ -34,7 +34,7 @@ describe('App routing', () => {
 
     renderAt('/patients');
 
-    expect(screen.getByRole('heading', { name: /MediCore HMS/i })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
     expect(screen.getByTestId('patients-page')).toHaveTextContent('Patients');
   });
 
