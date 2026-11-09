@@ -1,62 +1,46 @@
 # MediCore HMS — design system
 
-Status: **synchronized from a scaffold, not a brand.** The only source in the project is
-`frontend/src/index.css`, which is untouched Vite starter CSS (a purple accent and a centred
-1140 px column). Nothing here was chosen for a hospital product, so this document records the
-truth of today rather than a design intent. The redesign artboards in `design/hms-redesign/`
-propose replacement tokens; adoption happens through code, and this file must be re-synced
-when that lands.
+Status: **current.** Synchronized from `frontend/src/index.css` after the redesign shell landed (Tailwind v4 `@theme`). The values below are the project's real tokens; the earlier Vite scaffold (purple `#aa3bff`, centred 1126 px column) is gone.
 
 ## Colour
 
-| Token | Value | Usage | Source |
-|---|---|---|---|
-| `--text` | `#6b6375` | body copy (light) | `frontend/src/index.css` |
-| `--text-h` | `#08060d` | headings (light) | `frontend/src/index.css` |
-| `--bg` | `#fff` | app background (light) | `frontend/src/index.css` |
-| `--border` | `#e5e4e7` | dividers, the `#root` inline border | `frontend/src/index.css` |
-| `--code-bg` | `#f4f3ec` | inline code | `frontend/src/index.css` |
-| `--accent` | `#aa3bff` | links and accents (light) | `frontend/src/index.css` |
-| `--accent-bg` | `rgba(170,59,255,.1)` | accent wash | `frontend/src/index.css` |
-| `--accent-border` | `rgba(170,59,255,.5)` | accent outline | `frontend/src/index.css` |
-| `--shadow` | `0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05)` | the scaffold's only elevation | `frontend/src/index.css` |
-| dark: `--text` / `--text-h` / `--bg` | `#9ca3af` / `#f3f4f6` / `#16171d` | `prefers-color-scheme: dark` | `frontend/src/index.css` |
-| dark: `--accent` | `#c084fc` | dark accent | `frontend/src/index.css` |
+| Token | Value | Usage |
+|---|---|---|
+| `--color-ink` / `--color-nav` | `#0c1517` | sidebar and app chrome |
+| `--color-nav-hover` | `#16262a` | sidebar item hover |
+| `--color-nav-active` | `#0d9488` | current sidebar item |
+| `--color-canvas` | `#f2f5f4` | page background |
+| `--color-card` | `#ffffff` | cards, tables, dialogs |
+| `--color-line` / `--color-line-strong` | `#dde5e3` / `#ccd8d5` | dividers, input borders |
+| `--color-text` / `--color-muted` / `--color-muted-2` | `#12221f` / `#5c6f6c` / `#8d9d9a` | body, secondary, tertiary text |
+| `--color-brand` / `--color-brand-ink` / `--color-brand-wash` | `#0d9488` / `#0b7c72` / `#e3f3f1` | primary action, links, selection |
+| `--color-ok` / `--color-ok-wash` | `#1a7f43` / `#e7f4ec` | completed, success |
+| `--color-warn` / `--color-warn-wash` | `#a15c07` / `#fcf2e2` | sobreturno, warning |
+| `--color-danger` / `--color-danger-wash` | `#b42318` / `#fdeceb` | no-show, destructive, errors |
+| `--color-neutral` / `--color-neutral-wash` | `#5a6b68` / `#eceff0` | cancelled, muted status |
 
-There is **no** success, warning, danger, or info colour in the project, which is why status
-badges and validation messages currently have no visual language. There is no brand colour.
+Status colours exist as a pair (ink on wash) and are always used together for badges and pills. There is no dark-scheme token set: the app is light-only by decision.
 
 ## Typography
 
-| Token | Value | Usage | Source |
-|---|---|---|---|
-| `--sans` | `system-ui, 'Segoe UI', Roboto, sans-serif` | everything | `frontend/src/index.css` |
-| `--heading` | same stack | h1/h2 | `frontend/src/index.css` |
-| `--mono` | `ui-monospace, Consolas, monospace` | code, `.counter` | `frontend/src/index.css` |
+`--font-sans`: `system-ui, 'Segoe UI', Roboto, sans-serif` — everything.
+`--font-mono`: `ui-monospace, Consolas, monospace` — times, document numbers, counters (always with `tabular-nums`).
 
-Scale in use: `h1` 56px / -1.68px tracking (36px under 1024px), `h2` 24px / -0.24px (20px under
-1024px), body 18px at 145% line-height with 0.18px letter-spacing (16px under 1024px). No small,
-caption, or numeric scale exists beyond these.
+Scale in use (Tailwind defaults, no custom overrides): page title `text-[17px]`/`text-2xl` depending on screen, card headings `text-sm font-semibold`, body `text-sm`, captions `text-[11px]`. Uppercase micro-labels use `text-[11px] tracking-wide`.
 
-## Spacing, radius, shadow
+## Radius, shadow, spacing
 
-- Spacing: **no scale defined.** Only ad-hoc `margin: 32px 0` on `h1` and `8px` under `h2`.
-- Radius: **none defined** (`4px` only on `code`).
-- Shadows: the single `--shadow` token above.
+- `--radius-card` `14px` for cards and panels; `--radius-control` `9px` for buttons and inputs; `999px` for pills.
+- `--shadow-card`: `0 1px 2px rgba(9,26,24,.05), 0 8px 24px -12px rgba(9,26,24,.20)`.
+- Spacing: Tailwind default scale, in practice `gap-4`/`gap-5` between sections, `p-4`/`p-6` inside cards.
 
 ## Component rules
-- Layout: `#root` is `width: 1126px; max-width: 100%; margin: 0 auto; border-inline: 1px solid
-  var(--border); text-align: center`. Pages therefore render as a centred column with centred
-  text — the main reason the product reads as a scaffold rather than a dashboard.
-- Buttons, inputs, selects, tables and cards: **no rules exist**; every screen inherits browser
-  defaults, so tables have no borders or alignment and forms have no field styling.
-- Feedback: errors are plain `<p role="alert">` and `<span>` text; there is no toast, badge, or
-  inline-field treatment.
-- Navigation: one horizontal `<nav>` of plain `<Link>`s inside `frontend/src/components/Layout.tsx`.
+- Shell: fixed 248px sidebar (`lg:` breakpoint and up, 72px icon rail below), 64px topbar, content on `canvas` with `p-6`.
+- Nav: icons are inline SVG 16–19px, stroke 1.7, `aria-hidden`; the active item uses `aria-current="page"` and the brand wash/underline.
+- Cards: one `border border-line`, `rounded-card`, `bg-card`, `shadow-card`; never nested more than one level.
+- Tables: uppercase `text-[11px]` headers on `bg-card`, rows separated by `border-line`, hover `bg-canvas`.
+- Forms: label above field, `rounded-control`, `border-line`, focus ring in brand at 45% alpha, errors as `text-danger` plus `role="alert"`.
+- Feedback: page-level problems use `role="alert"`; inline field errors sit under the field.
 
-## Gaps the redesign must close
-1. A real layout shell (sidebar or topbar) replacing the centred column.
-2. Semantic colour set: brand, surface, border, and the four status colours.
-3. A type scale with a numeric/tabular style for times and figures.
-4. Field, table, badge, card and empty/error state components.
-5. Consistent focus-visible styling and a dark-scheme decision (today it follows the OS).
+## Gaps this slice did not close
+Page contents (patients, professionals, agenda, booking, my appointments, login) still use browser-default markup; tasks T3–T7 restyle them against these tokens.
