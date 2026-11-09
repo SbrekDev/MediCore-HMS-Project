@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { cleanup, screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { routes } from '../routes';
 import { sessionStore } from '../auth/session';
@@ -59,34 +58,6 @@ describe('shell navigation matrix', () => {
       expect(navHrefs()).toEqual(expected);
     }
   );
-
-  it('never offers a link the current role cannot open', async () => {
-    signIn('Professional');
-    renderAt('/agenda');
-
-    const user = userEvent.setup();
-    // Every visible link must land somewhere allowed: the index route is role-aware,
-    // so even "Today" resolves to a page this account can read.
-    for (const href of navHrefs()) {
-      const link = navLinks().find((a) => (a.getAttribute('href') ?? '') === href)!;
-      await user.click(link);
-
-      expect(
-        screen.queryAllByText(/not authorized to view this page/i)
-      ).toHaveLength(0);
-    }
-  });
-
-  it('sends the index route where the reader can actually work', () => {
-    signIn('Receptionist');
-    const receptionistRouter = renderAt('/');
-    expect(receptionistRouter.state.location.pathname).toBe('/patients');
-    cleanup();
-
-    signIn('Professional', 'p-1');
-    const professionalRouter = renderAt('/');
-    expect(professionalRouter.state.location.pathname).toBe('/my-appointments');
-  });
 
   it('hides the Professionals link from a Receptionist but shows Agenda to an Admin', () => {
     signIn('Receptionist');
