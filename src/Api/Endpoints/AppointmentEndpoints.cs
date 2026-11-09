@@ -1,6 +1,8 @@
 using MediCore.Api.Authorization;
 using MediCore.Application.Appointments;
+using MediCore.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace MediCore.Api.Endpoints;
 
@@ -29,6 +31,48 @@ public static class AppointmentEndpoints
                 : MapErrorResult(result.Error.Code, result.Error.Message);
         });
 
+        group.MapGet("/", [Authorize(Policy = AuthorizationPolicies.ReceptionStaff)] async (
+            [FromQuery] string? date,
+            [FromQuery] Guid? professionalId,
+            [FromQuery] Guid? patientId,
+            [FromQuery] string? status,
+            ListAppointments.Handler handler,
+            CancellationToken cancellationToken) =>
+        {
+            if (string.IsNullOrWhiteSpace(date) ||
+                !DateOnly.TryParseExact(date, "yyyy-MM-dd", out var parsedDate))
+            {
+                return Results.BadRequest(new
+                {
+                    code = "Appointment.DateRequired",
+                    message = "A date must be provided in yyyy-MM-dd format."
+                });
+            }
+
+            AppointmentStatus? parsedStatus = null;
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                if (!Enum.TryParse<AppointmentStatus>(status, true, out var parsedStatusValue))
+                {
+                    return Results.BadRequest(new
+                    {
+                        code = "Appointment.InvalidStatus",
+                        message = $"Status '{status}' is not valid."
+                    });
+                }
+
+                parsedStatus = parsedStatusValue;
+            }
+
+            var result = await handler.HandleAsync(
+                new ListAppointments.Query(parsedDate, professionalId, patientId, parsedStatus),
+                cancellationToken);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value.Appointments)
+                : MapErrorResult(result.Error.Code, result.Error.Message);
+        });
+
         group.MapPost("/{id:guid}/reschedule", [Authorize(Policy = AuthorizationPolicies.ReceptionStaff)] async (
             Guid id,
             RescheduleAppointmentRequest request,
@@ -52,7 +96,12 @@ public static class AppointmentEndpoints
             var result = await handler.HandleAsync(new CancelAppointment.Command(id), cancellationToken);
 
             return result.IsSuccess
-                ? Results.Ok(new { id = result.Value, status = "Cancelled" })
+                ? Results.Ok(new
+                {
+                    id = result.Value.AppointmentId,
+                    status = "Cancelled",
+                    isLateCancellation = result.Value.IsLateCancellation
+                })
                 : MapErrorResult(result.Error.Code, result.Error.Message);
         });
 

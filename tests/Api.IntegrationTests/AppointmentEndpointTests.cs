@@ -1187,6 +1187,175 @@ public class AppointmentEndpointTests : IntegrationTestBase
         created.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task Get_appointments_by_date_returns_list_ordered_by_start_and_optionally_filtered_by_professional()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, adminToken, professionalA, patientA) = await SeedScenarioAsync();
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var professionalB = await CreateProfessionalAsync(client, "Ana", "Gomez", "LST0001");
+        var assignB = await client.PutAsJsonAsync($"/api/professionals/{professionalB}/specialties/{CardiologySpecialtyId}", new { isPrimary = true });
+        assignB.EnsureSuccessStatusCode();
+        var patientB = await CreatePatientAsync(client, "DNI", "39111333");
+
+        // Admin is allowed to book and list appointments.
+        var date = DateTimeOffset.UtcNow.Date.AddDays(3);
+        var startA1 = new DateTimeOffset(date.AddHours(10), TimeSpan.Zero);
+        var startB1 = new DateTimeOffset(date.AddHours(9), TimeSpan.Zero);
+        var startA2 = new DateTimeOffset(date.AddHours(14), TimeSpan.Zero);
+
+        var bookingA1 = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId = patientA,
+            professionalId = professionalA,
+            specialtyId = CardiologySpecialtyId,
+            start = startA1,
+            isSobreturno = false
+        });
+        bookingA1.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var bookingB1 = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId = patientB,
+            professionalId = professionalB,
+            specialtyId = CardiologySpecialtyId,
+            start = startB1,
+            isSobreturno = false
+        });
+        bookingB1.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var bookingA2 = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId = patientA,
+            professionalId = professionalA,
+            specialtyId = CardiologySpecialtyId,
+            start = startA2,
+            isSobreturno = false
+        });
+        bookingA2.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var listResponse = await client.GetAsync($"/api/appointments?date={date:yyyy-MM-dd}");
+        listResponse.EnsureSuccessStatusCode();
+
+        var appointments = await listResponse.Content.ReadFromJsonAsync<IReadOnlyList<AppointmentListItem>>();
+        appointments!.Should().HaveCount(3);
+        appointments.Select(a => a.Start).Should().BeInAscendingOrder();
+        appointments.Select(a => a.ProfessionalId).Should().Contain(professionalA);
+        appointments.Select(a => a.ProfessionalId).Should().Contain(professionalB);
+
+        var filteredResponse = await client.GetAsync($"/api/appointments?date={date:yyyy-MM-dd}&professionalId={professionalA}");
+        filteredResponse.EnsureSuccessStatusCode();
+
+        var filtered = await filteredResponse.Content.ReadFromJsonAsync<IReadOnlyList<AppointmentListItem>>();
+        filtered!.Should().HaveCount(2);
+        filtered.Should().OnlyContain(a => a.ProfessionalId == professionalA);
+    }
+
+    [Fact]
+    public async Task Get_appointments_without_date_returns_bad_request_DateRequired()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, _, _) = await SeedScenarioAsync();
+
+        var response = await client.GetAsync("/api/appointments");
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.DateRequired");
+    }
+
+    [Fact]
+    public async Task Get_appointments_requires_reception_staff()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, _) = await SeedScenarioAsync();
+
+        await SeedUserAsync("professional-list@ceibos.demo", "TestPass123!", "Professional", professionalId);
+        var professionalToken = await LoginAsync(client, "professional-list@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", professionalToken);
+
+        var date = DateTimeOffset.UtcNow.Date.AddDays(3);
+        var response = await client.GetAsync($"/api/appointments?date={date:yyyy-MM-dd}");
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Post_cancel_more_than_24h_response_includes_isLateCancellation_false()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        var response = await client.PostAsync($"/api/appointments/{appointment!.Id}/cancel", null);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<CancelResponse>();
+        body!.Id.Should().Be(appointment.Id);
+        body.Status.Should().Be("Cancelled");
+        body.IsLateCancellation.Should().BeFalse();
+
+        // A missing property deserializes into the default false, so pin the key itself.
+        var raw = await response.Content.ReadAsStringAsync();
+        raw.Should().Contain("isLateCancellation");
+    }
+
+    [Fact]
+    public async Task Post_cancel_within_24h_response_includes_isLateCancellation_true()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = DateTimeOffset.UtcNow.AddHours(3);
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        var response = await client.PostAsync($"/api/appointments/{appointment!.Id}/cancel", null);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<CancelResponse>();
+        body!.Id.Should().Be(appointment.Id);
+        body.Status.Should().Be("Cancelled");
+        body.IsLateCancellation.Should().BeTrue();
+    }
+
+    private sealed record CancelResponse(Guid Id, string Status, bool IsLateCancellation);
+
+    private sealed record AppointmentListItem(
+        Guid Id,
+        Guid PatientId,
+        Guid ProfessionalId,
+        Guid SpecialtyId,
+        DateTimeOffset Start,
+        int DurationMinutes,
+        string Status,
+        bool IsSobreturno,
+        bool IsLateCancellation);
+
     private sealed record CreateAppointmentResponse(Guid Id);
 
     private sealed record CreateProfessionalResponse(Guid ProfessionalId);

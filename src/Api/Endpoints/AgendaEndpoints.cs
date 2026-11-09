@@ -66,6 +66,18 @@ public static class AgendaEndpoints
                 : MapErrorResult(result.Error.Code, result.Error.Message);
         });
 
+        group.MapGet("/{id:guid}/agenda", [Authorize(Policy = AuthorizationPolicies.AdminOnly)] async (
+            Guid id,
+            GetAgenda.Handler handler,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await handler.HandleAsync(new GetAgenda.Query(id), cancellationToken);
+
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : MapErrorResult(result.Error.Code, result.Error.Message);
+        });
+
         group.MapGet("/{id:guid}/availability", [Authorize(Policy = AuthorizationPolicies.ClinicalStaff)] async (
             Guid id,
             DateOnly date,
