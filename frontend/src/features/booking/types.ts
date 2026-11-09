@@ -13,6 +13,7 @@ export interface AvailabilityResponse {
 export interface AppointmentListItemDto {
   id: string;
   patientId: string;
+  patientName: string;
   professionalId: string;
   specialtyId: string;
   start: string;

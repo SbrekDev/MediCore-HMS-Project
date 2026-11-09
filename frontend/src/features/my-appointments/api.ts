@@ -5,7 +5,7 @@ export async function listMyAppointments(params: {
   from: string;
   to: string;
 }): Promise<MyAppointmentListItemDto[]> {
-  return listAppointments(params) as Promise<MyAppointmentListItemDto[]>;
+  return listAppointments(params);
 }
 
 export { completeAppointment, noShowAppointment };

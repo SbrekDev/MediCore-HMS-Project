@@ -68,6 +68,7 @@ function appointmentFixture(
   return {
     id: 'appt-1',
     patientId: patient.id,
+    patientName: `${patient.firstName} ${patient.lastName}`,
     professionalId: professional.id,
     specialtyId: specialtyCardio.id,
     start: '2026-12-15T09:00:00-03:00',
