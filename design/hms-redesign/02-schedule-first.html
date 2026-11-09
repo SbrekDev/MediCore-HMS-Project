@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MediCore HMS — 02 schedule first</title>
+<style>
+  :root{
+    --canvas:#ffffff; --sunken:#f7f9fa; --line:#e2e8ee; --line-soft:#eef2f5;
+    --text:#16232b; --muted:#5b6b78; --muted-2:#8a99a5;
+    --teal:#0f766e; --teal-ink:#0b5d57; --teal-wash:#e6f4f1;
+    --amber:#b45309; --amber-wash:#fdf1e0; --red:#b91c1c; --red-wash:#fdeaea;
+    --slate:#475569; --slate-wash:#eef1f5; --green:#15803d; --green-wash:#e8f5ec;
+    --radius:10px; --shadow:0 1px 2px rgba(16,24,40,.05);
+    --sans:system-ui,'Segoe UI',Roboto,sans-serif; --num:ui-monospace,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--sans);font-size:14px;line-height:1.45;color:var(--text);background:var(--canvas);-webkit-font-smoothing:antialiased}
+  .skip{position:absolute;left:-9999px}
+  .skip:focus{left:12px;top:12px;background:#fff;padding:8px 12px;border:2px solid var(--teal);z-index:9}
+
+  header.top{border-bottom:1px solid var(--line);background:#fff}
+  .bar{display:flex;align-items:center;gap:28px;padding:0 32px;height:60px}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.2px}
+  .brand .mark{width:28px;height:28px;border-radius:8px;background:var(--teal);color:#fff;display:grid;place-items:center;font-size:13px}
+  .brand small{font-weight:500;color:var(--muted-2);font-size:12px;border-left:1px solid var(--line);padding-left:9px;margin-left:3px}
+  .tabs{display:flex;gap:2px;margin-left:8px}
+  .tabs a{padding:19px 14px;color:var(--muted);text-decoration:none;font-size:13.5px;border-bottom:2px solid transparent}
+  .tabs a:hover{color:var(--text)}
+  .tabs a[aria-current="page"]{color:var(--teal-ink);border-bottom-color:var(--teal);font-weight:600}
+  .bar .right{margin-left:auto;display:flex;align-items:center;gap:12px}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 13px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer}
+  .btn:hover{background:var(--sunken)}
+  .btn.primary{background:var(--teal);border-color:var(--teal);color:#fff}
+  .btn.primary:hover{background:var(--teal-ink)}
+  .chip-user{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+  .chip-user .av{width:28px;height:28px;border-radius:50%;background:var(--teal-wash);color:var(--teal-ink);display:grid;place-items:center;font-size:11px;font-weight:700}
+
+  main{padding:22px 32px 28px}
+  .page-head{display:flex;align-items:flex-end;gap:16px;margin-bottom:18px}
+  .page-head h1{font-size:22px;letter-spacing:-.5px;margin:0}
+  .page-head p{margin:2px 0 0;color:var(--muted);font-size:13px}
+
+  .work{display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start}
+
+  /* week schedule */
+  .week{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#fff;box-shadow:var(--shadow)}
+  .week-h{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);background:var(--sunken)}
+  .week-h h2{margin:0;font-size:14px}
+  .week-h .nav-arrow{border:1px solid var(--line);background:#fff;border-radius:7px;width:26px;height:26px;cursor:pointer;color:var(--muted)}
+  .week-h .spacer{margin-left:auto;display:flex;gap:6px}
+  .week-h .seg{display:flex;background:#fff;border:1px solid var(--line);border-radius:8px;padding:2px}
+  .week-h .seg span{font-size:12px;padding:4px 9px;border-radius:6px;color:var(--muted)}
+  .week-h .seg .on{background:var(--teal-wash);color:var(--teal-ink);font-weight:600}
+  .grid-week{display:grid;grid-template-columns:56px repeat(5,1fr);font-size:12px}
+  .grid-week .hd{padding:9px 8px;border-bottom:1px solid var(--line);border-left:1px solid var(--line-soft);text-align:center;color:var(--muted);font-weight:600}
+  .grid-week .hd b{display:block;color:var(--text);font-size:12.5px}
+  .grid-week .hd.today{background:var(--teal-wash);color:var(--teal-ink)}
+  .grid-week .hour{height:46px;border-bottom:1px solid var(--line-soft);color:var(--muted-2);font-family:var(--num);font-size:11px;padding:4px 6px;text-align:right}
+  .cell{border-bottom:1px solid var(--line-soft);border-left:1px solid var(--line-soft);position:relative;height:46px}
+  .cell .blk{position:absolute;left:4px;right:4px;border-radius:6px;padding:3px 6px;font-size:10.5px;line-height:1.25;overflow:hidden;border-left:3px solid}
+  .cell .blk b{display:block;font-size:10.5px;font-weight:700}
+  .avail{background:var(--teal-wash);border-color:var(--teal);color:var(--teal-ink)}
+  .booked{background:#fff;border-color:var(--slate);color:var(--text);box-shadow:inset 0 0 0 1px var(--line)}
+  .sobre-blk{background:var(--amber-wash);border-color:var(--amber);color:#7c3f06}
+  .gone{background:var(--slate-wash);border-color:var(--muted-2);color:var(--slate);text-decoration:line-through}
+
+  .rail{display:flex;flex-direction:column;gap:16px}
+  .card{border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow)}
+  .card-h{padding:12px 14px;border-bottom:1px solid var(--line);font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .card-h .ghost{margin-left:auto;border:none;background:none;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer}
+  .list{list-style:none;margin:0;padding:6px 0}
+  .list li{display:flex;gap:10px;padding:8px 14px;align-items:flex-start}
+  .list li + li{border-top:1px solid var(--line-soft)}
+  .list .t{font-family:var(--num);font-size:12px;color:var(--muted);min-width:42px;padding-top:1px}
+  .list b{font-size:12.5px;font-weight:600;display:block}
+  .list small{color:var(--muted-2);font-size:11.5px}
+  .tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:2px 6px;border-radius:5px;white-space:nowrap}
+  .tag.ok{color:var(--green);background:var(--green-wash)}
+  .tag.no{color:var(--red);background:var(--red-wash)}
+  .tag.so{color:var(--amber);background:var(--amber-wash)}
+  .tag.cf{color:var(--teal-ink);background:var(--teal-wash)}
+  .stat{padding:12px 14px;display:flex;align-items:baseline;justify-content:space-between}
+  .stat b{font-size:20px;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+  .stat span{color:var(--muted);font-size:12px}
+  .track{height:6px;background:var(--slate-wash);border-radius:99px;margin:0 14px 14px;overflow:hidden}
+  .track i{display:block;height:100%;width:50%;background:var(--amber)}
+  .exc{padding:10px 14px;font-size:12.5px;color:var(--muted)}
+  .exc b{color:var(--text);display:block;font-size:12.5px}
+
+  a:focus-visible,button:focus-visible{outline:3px solid rgba(15,118,110,.45);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  @media (max-width:1150px){.work{grid-template-columns:1fr}.grid-week{grid-template-columns:48px repeat(3,1fr)}.grid-week .hd:nth-child(n+5),.cell:nth-child(5n){display:none}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top">
+  <div class="bar">
+    <div class="brand"><span class="mark" aria-hidden="true">M</span>MediCore<small>Los Ceibos</small></div>
+    <nav class="tabs" aria-label="Main">
+      <a href="#">Today</a>
+      <a href="#">Patients</a>
+      <a href="#">Booking</a>
+      <a href="#" aria-current="page">Agenda</a>
+      <a href="#">My appointments</a>
+      <a href="#">Professionals</a>
+    </nav>
+    <div class="right">
+      <button class="btn primary" type="button">New appointment</button>
+      <span class="chip-user"><span class="av" aria-hidden="true">MG</span>María González</span>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <div class="page-head">
+    <div>
+      <h1>Ana Demo — week of 9 November</h1>
+      <p>MN-DEMO-0001 · Cardiología · 24 appointments booked, 1 sobreturno</p>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn" type="button">Change professional</button>
+      <button class="btn" type="button">Edit template</button>
+    </div>
+  </div>
+
+  <div class="work">
+    <section class="week" aria-labelledby="wk">
+      <div class="week-h">
+        <button class="nav-arrow" type="button" aria-label="Previous week">‹</button>
+        <h2 id="wk">9 – 13 November</h2>
+        <button class="nav-arrow" type="button" aria-label="Next week">›</button>
+        <div class="spacer"><div class="seg" role="group" aria-label="View"><span class="on">Week</span><span>Day</span><span>List</span></div></div>
+      </div>
+      <div class="grid-week" role="table" aria-label="Weekly availability and appointments">
+        <div></div>
+        <div class="hd">Mon<b>9</b></div>
+        <div class="hd">Tue<b>10</b></div>
+        <div class="hd">Wed<b>11</b></div>
+        <div class="hd today">Thu<b>12</b></div>
+        <div class="hd">Fri<b>13</b></div>
+
+        <div class="hour">08:00</div>
+        <div class="cell"><div class="blk avail"><b>Available</b>08–12</div></div>
+        <div class="cell"><div class="blk avail"><b>Available</b>08–12</div></div>
+        <div class="cell"><div class="blk avail"><b>Available</b>08–12</div></div>
+        <div class="cell"><div class="blk booked"><b>María González</b>Completed</div></div>
+        <div class="cell"><div class="blk avail"><b>Available</b>08–16</div></div>
+
+        <div class="hour">09:00</div>
+        <div class="cell"><div class="blk booked"><b>Jorge Prueba</b>Confirmed</div></div>
+        <div class="cell"></div>
+        <div class="cell"></div>
+        <div class="cell"><div class="blk gone"><b>Lucía Fernández</b>No-show</div></div>
+        <div class="cell"></div>
+
+        <div class="hour">10:00</div>
+        <div class="cell"></div>
+        <div class="cell"><div class="blk booked"><b>Raúl Castro</b>Confirmed</div></div>
+        <div class="cell"></div>
+        <div class="cell"><div class="blk sobre-blk"><b>Elena Núñez</b>Sobreturno</div></div>
+        <div class="cell"><div class="blk booked"><b>Diego Sosa</b>Confirmed</div></div>
+
+        <div class="hour">11:00</div>
+        <div class="cell"></div>
+        <div class="cell"></div>
+        <div class="cell"></div>
+        <div class="cell"><div class="blk booked"><b>Jorge Prueba</b>Confirmed</div></div>
+        <div class="cell"></div>
+
+        <div class="hour">14:00</div>
+        <div class="cell"><div class="blk avail"><b>Available</b>14–18</div></div>
+        <div class="cell"><div class="blk avail"><b>Available</b>14–18</div></div>
+        <div class="cell"><div class="blk gone"><b>Blocked</b>Training</div></div>
+        <div class="cell"><div class="blk avail"><b>Available</b>14–18</div></div>
+        <div class="cell"><div class="blk avail"><b>Available</b>14–16</div></div>
+      </div>
+    </section>
+
+    <div class="rail">
+      <section class="card" aria-labelledby="todays">
+        <div class="card-h" id="todays">Thursday · 12 Nov<button class="ghost" type="button">Open day</button></div>
+        <ul class="list">
+          <li><span class="t">08:00</span><div><b>María González</b><small>DNI 12345678 · 30 min</small></div><span class="tag ok" style="margin-left:auto">Done</span></li>
+          <li><span class="t">08:30</span><div><b>Lucía Fernández</b><small>DNI 39111222 · 30 min</small></div><span class="tag no" style="margin-left:auto">No-show</span></li>
+          <li><span class="t">09:15</span><div><b>Jorge Prueba</b><small>DNI 40111222 · 30 min</small></div><span class="tag cf" style="margin-left:auto">Confirmed</span></li>
+          <li><span class="t">10:00</span><div><b>Elena Núñez</b><small>DNI 28555111 · 30 min</small></div><span class="tag so" style="margin-left:auto">Sobreturno</span></li>
+          <li><span class="t">11:30</span><div><b>Raúl Castro</b><small>DNI 30888999 · 30 min</small></div><span class="tag cf" style="margin-left:auto">Confirmed</span></li>
+        </ul>
+      </section>
+
+      <section class="card" aria-labelledby="cap">
+        <div class="card-h" id="cap">Sobreturno cap</div>
+        <div class="stat"><span>Used today</span><b>1 / 2</b></div>
+        <div class="track"><i></i></div>
+      </section>
+
+      <section class="card" aria-labelledby="exc">
+        <div class="card-h" id="exc">Date exceptions<button class="ghost" type="button">Add</button></div>
+        <div class="exc"><b>25 Dec 2026 · full day</b>Christmas — not bookable</div>
+        <div class="exc" style="border-top:1px solid var(--line-soft)"><b>31 Dec 2026 · 08–12</b>Training — afternoons only</div>
+      </section>
+    </div>
+  </div>
+</main>
+</body>
+</html>
