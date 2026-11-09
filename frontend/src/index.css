@@ -5,9 +5,9 @@
 
   /* The shell reads as a soft surface, not a dark block: the sidebar is a light
      tint of the brand instead of near-black, which keeps contrast low. */
-  --color-sidebar: #f5f9f8;
-  --color-sidebar-hover: #e9f2f0;
-  --color-sidebar-ink: #45605c;
+  --color-sidebar: #e9efed;
+  --color-sidebar-hover: #dfe7e5;
+  --color-sidebar-ink: #425c57;
 
   --color-canvas: #f6f9f8;
   --color-card: #ffffff;

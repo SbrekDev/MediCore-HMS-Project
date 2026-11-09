@@ -7,7 +7,7 @@ Status: **current.** Synchronized from `frontend/src/index.css` after the redesi
 | Token | Value | Usage |
 |---|---|---|
 | `--color-ink` | `#2b3d39` | strongest neutral, rarely used |
-| `--color-sidebar` / `--color-sidebar-hover` / `--color-sidebar-ink` | `#f5f9f8` / `#e9f2f0` / `#45605c` | sidebar surface, hover, resting text |
+| `--color-sidebar` / `--color-sidebar-hover` / `--color-sidebar-ink` | `#e9efed` / `#dfe7e5` / `#425c57` | sidebar surface (a light cool gray that separates it from the canvas without going dark), hover, resting text |
 | `--color-canvas` | `#f6f9f8` | page background |
 | `--color-card` | `#ffffff` | cards, tables, dialogs |
 | `--color-line` / `--color-line-strong` | `#e4ecea` / `#d3e0dd` | dividers, input borders |
@@ -35,7 +35,7 @@ Scale in use (Tailwind defaults, no custom overrides): page title `text-[17px]`/
 
 ## Component rules
 - Shell: fixed 272px sidebar (`lg:` breakpoint and up, 72px icon rail below), 64px topbar, content on `canvas` with `p-6`.
-- Nav: **light sidebar** (`--color-sidebar`) with a right border, not a dark block; icons are inline SVG 16–19px, stroke 1.7, `aria-hidden`; the active item uses `aria-current="page"` with a brand wash and brand-ink text.
+- Nav: **light gray sidebar** (`--color-sidebar`, a cool gray with a green cast so it belongs to the palette) with a right border, not a dark block; icons are inline SVG 16–19px, stroke 1.7, `aria-hidden`; the active item uses `aria-current="page"` with a brand wash and brand-ink text.
 - Cards: one `border border-line`, `rounded-card`, `bg-card`, `shadow-card`; never nested more than one level.
 - Tables: uppercase `text-[11px]` headers on `bg-card`, rows separated by `border-line`, hover `bg-canvas`.
 - Forms: label above field, `rounded-control`, `border-line`, focus ring in brand at 45% alpha, errors as `text-danger` plus `role="alert"`.
