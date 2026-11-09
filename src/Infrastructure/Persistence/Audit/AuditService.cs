@@ -1,4 +1,5 @@
 using MediCore.Application.Abstractions;
+using Microsoft.EntityFrameworkCore;
 
 namespace MediCore.Infrastructure.Persistence.Audit;
 
@@ -24,17 +25,16 @@ public class AuditService : IAuditService
         string? changesJson,
         CancellationToken cancellationToken = default)
     {
-        _context.AuditEntries.Add(new AuditEntry
-        {
-            Id = Guid.NewGuid(),
-            ActorUserId = actorId,
-            Action = action,
-            EntityType = entityType,
-            EntityId = entityId,
-            TimestampUtc = timestampUtc,
-            ChangesJson = changesJson
-        });
-
-        await _context.SaveChangesAsync(cancellationToken);
+        // Inserted with SQL rather than through the ChangeTracker: SaveChanges would also
+        // commit whatever else the caller happens to have pending, which turns an audit call
+        // into a silent partial commit of somebody else's unit of work. The insert still joins
+        // the caller's ambient transaction, which is what keeps the audit row atomic with the
+        // change it describes.
+        await _context.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO [AuditEntries] ([Id], [ActorUserId], [Action], [EntityType], [EntityId], [TimestampUtc], [ChangesJson])
+            VALUES ({Guid.NewGuid()}, {actorId}, {action}, {entityType}, {entityId}, {timestampUtc}, {changesJson})
+            """,
+            cancellationToken);
     }
 }
