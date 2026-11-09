@@ -10,6 +10,8 @@ public static class CancelAppointment
 {
     public sealed record Command(Guid AppointmentId);
 
+    public sealed record CancelResult(Guid AppointmentId, bool IsLateCancellation);
+
     public sealed class Handler
     {
         private static readonly TimeSpan LateCancellationThreshold = TimeSpan.FromHours(24);
@@ -28,21 +30,21 @@ public static class CancelAppointment
             _timeProvider = timeProvider;
         }
 
-        public async Task<Result<Guid>> HandleAsync(Command command, CancellationToken cancellationToken = default)
+        public async Task<Result<CancelResult>> HandleAsync(Command command, CancellationToken cancellationToken = default)
         {
             var appointment = await _context.Appointments
                 .FirstOrDefaultAsync(a => a.Id == command.AppointmentId, cancellationToken);
 
             if (appointment is null)
             {
-                return Result<Guid>.Failure(DomainError.NotFound(
+                return Result<CancelResult>.Failure(DomainError.NotFound(
                     "Appointment.NotFound",
                     $"Appointment '{command.AppointmentId}' was not found."));
             }
 
             if (appointment.Status != AppointmentStatus.Confirmed)
             {
-                return Result<Guid>.Failure(DomainError.Conflict(
+                return Result<CancelResult>.Failure(DomainError.Conflict(
                     "Appointment.InvalidState",
                     $"Only a Confirmed appointment can be cancelled (current status: {appointment.Status})."));
             }
@@ -60,12 +62,12 @@ public static class CancelAppointment
             }
             catch (DbUpdateConcurrencyException)
             {
-                return Result<Guid>.Failure(DomainError.Conflict(
+                return Result<CancelResult>.Failure(DomainError.Conflict(
                     "Appointment.InvalidState",
                     "The appointment was modified concurrently; retry the cancellation."));
             }
 
-            return Result<Guid>.Success(appointment.Id);
+            return Result<CancelResult>.Success(new CancelResult(appointment.Id, appointment.IsLateCancellation));
         }
     }
 }

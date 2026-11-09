@@ -32,8 +32,10 @@ public static class DependencyInjection
         services.AddScoped<CreateAgendaException.Handler>();
         services.AddScoped<DeleteAgendaException.Handler>();
         services.AddScoped<GetAvailability.Handler>();
+        services.AddScoped<GetAgenda.Handler>();
         services.AddScoped<BookAppointment.Handler>();
         services.AddScoped<RescheduleAppointment.Handler>();
+        services.AddScoped<ListAppointments.Handler>();
         services.AddScoped<CancelAppointment.Handler>();
         services.AddScoped<CompleteAppointment.Handler>();
         services.AddScoped<MarkNoShow.Handler>();

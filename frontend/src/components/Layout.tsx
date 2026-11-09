@@ -5,6 +5,7 @@ import { logout } from '../features/auth/api';
 export function Layout() {
   const session = useSession();
   const navigate = useNavigate();
+  const canOpenAgenda = session?.roles.includes('Admin') ?? false;
 
   async function handleSignOut() {
     await logout();
@@ -18,7 +19,7 @@ export function Layout() {
         <nav>
           <Link to="/patients">Patients</Link>
           <Link to="/professionals">Professionals</Link>
-          <Link to="/agenda">Agenda</Link>
+          {canOpenAgenda && <Link to="/agenda">Agenda</Link>}
           <Link to="/booking">Booking</Link>
         </nav>
         {session && (
