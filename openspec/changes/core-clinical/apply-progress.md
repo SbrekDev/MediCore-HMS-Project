@@ -37,6 +37,22 @@ Evidence:
 - Role claims are decoded from the access token for UI shaping only; the server remains authoritative.
 - The refresh cookie is Secure + SameSite=Strict, so silent refresh needs an https dev origin (documented in `vite.config.ts`); login itself works over http.
 
+## Phase 8 — Frontend Patients & Professionals (completed)
+
+- [x] 8.1 RED: Test patient search/list/form with validation [Spec: patient-management].
+- [x] 8.2 GREEN: Add `features/patients/` with RHF + zod, TanStack Query.
+- [x] 8.3 RED: Test professional list/form and specialty assignment UI [Spec: professional-management].
+- [x] 8.4 GREEN: Add `features/professionals/`.
+
+Evidence:
+- RED: 9 feature tests failed against the placeholder pages before implementation.
+- `npm test` (frontend) → 25 passed (7 files), was 16.
+- `npm run lint` (oxlint) → clean.
+- `npm run build` (`tsc -b && vite build`) → success (chunk-size warning only).
+- Dependencies added per design.md: `react-hook-form`, `zod`, `@hookform/resolvers`.
+- Client validation mirrors the server (required fields, future birth date, minor requires responsible, duplicate document); the server remains authoritative.
+- Deferred (not in Phase 8 tasks): coverage entry and explicit consent recording are not exposed in the UI; only the `consentPending` hint is shown.
+
 ## Work Unit Evidence
 
 | Work unit | Focused test command | Result | Runtime harness | Rollback boundary |

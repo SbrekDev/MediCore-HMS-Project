@@ -8,7 +8,7 @@ import { AgendaPage } from '../features/agenda/pages/AgendaPage';
 import { BookingPage } from '../features/booking/pages/BookingPage';
 
 // Mirrors the server policy matrix: Admin+Receptionist for patients/booking,
-// Admin for the professional catalog, all clinical staff for the agenda.
+// Admin for the professional catalog and the agenda (every agenda write is AdminOnly).
 const RECEPTION_STAFF = ['Admin', 'Receptionist'] as const;
 const CLINICAL_STAFF = ['Admin', 'Receptionist', 'Professional'] as const;
 const ADMIN_ONLY = ['Admin'] as const;
@@ -46,7 +46,7 @@ export const routes = [
       {
         path: 'agenda',
         element: (
-          <RequireRole allowed={CLINICAL_STAFF}>
+          <RequireRole allowed={ADMIN_ONLY}>
             <AgendaPage />
           </RequireRole>
         ),

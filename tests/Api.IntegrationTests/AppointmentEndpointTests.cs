@@ -964,6 +964,496 @@ public class AppointmentEndpointTests : IntegrationTestBase
         unchanged.Status.Should().Be(AppointmentStatus.Confirmed);
     }
 
+    [Fact]
+    public async Task Post_reschedule_onto_slot_overlapping_previous_day_appointment_returns_conflict_and_leaves_appointment_unchanged()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        // Existing appointment starts the day before the requested slot and crosses midnight into it.
+        var crossingStart = new DateTimeOffset(DateTime.UtcNow.Date.AddDays(4).AddHours(23).AddMinutes(40), TimeSpan.Zero);
+        using (var seedScope = Factory.Services.CreateScope())
+        {
+            var seedDb = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            seedDb.Appointments.Add(new Appointment(Guid.NewGuid())
+            {
+                PatientId = patientId,
+                ProfessionalId = professionalId,
+                SpecialtyId = CardiologySpecialtyId,
+                StartDateTime = crossingStart,
+                DurationMinutes = 30,
+                Status = AppointmentStatus.Confirmed,
+                IsSobreturno = false,
+                IsLateCancellation = false,
+                CreatedAt = DateTimeOffset.UtcNow,
+                CreatedBy = Guid.Empty,
+                ModifiedAt = DateTimeOffset.UtcNow,
+                ModifiedBy = Guid.Empty
+            });
+            await seedDb.SaveChangesAsync();
+        }
+
+        var requested = new DateTimeOffset(DateTime.UtcNow.Date.AddDays(5), TimeSpan.Zero);
+        var response = await client.PostAsJsonAsync($"/api/appointments/{appointment!.Id}/reschedule", new
+        {
+            start = requested
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.ProfessionalOverlap");
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var unchanged = await dbContext.Appointments.SingleAsync(a => a.Id == appointment.Id);
+        unchanged.StartDateTime.Should().Be(start);
+        unchanged.Status.Should().Be(AppointmentStatus.Confirmed);
+    }
+
+    [Fact]
+    public async Task Post_noshow_concurrently_for_the_same_patient_increments_the_counter_once_per_appointment()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var appointmentIds = new List<Guid>();
+
+        for (var slot = 0; slot < 6; slot++)
+        {
+            var booked = await client.PostAsJsonAsync("/api/appointments", new
+            {
+                patientId,
+                professionalId,
+                specialtyId = CardiologySpecialtyId,
+                start = start.AddMinutes(slot * 30),
+                isSobreturno = false
+            });
+            booked.StatusCode.Should().Be(HttpStatusCode.Created);
+            var created = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+            appointmentIds.Add(created!.Id);
+        }
+
+        await SeedUserAsync("professional-noshow-concurrent@ceibos.demo", "TestPass123!", "Professional", professionalId);
+        var professionalToken = await LoginAsync(client, "professional-noshow-concurrent@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", professionalToken);
+
+        var responses = await Task.WhenAll(appointmentIds.Select(id =>
+            client.PostAsync($"/api/appointments/{id}/no-show", null)));
+
+        responses.Should().OnlyContain(r => r.StatusCode == HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var patient = await dbContext.Patients.AsNoTracking().SingleAsync(p => p.Id == patientId);
+        patient.NoShowCount.Should().Be(appointmentIds.Count);
+    }
+
+    [Fact]
+    public async Task Post_noshow_twice_concurrently_for_the_same_appointment_marks_it_once_and_counts_once()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        await SeedUserAsync("professional-noshow-race@ceibos.demo", "TestPass123!", "Professional", professionalId);
+        var professionalToken = await LoginAsync(client, "professional-noshow-race@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", professionalToken);
+
+        var race = await Task.WhenAll(
+            client.PostAsync($"/api/appointments/{appointment!.Id}/no-show", null),
+            client.PostAsync($"/api/appointments/{appointment!.Id}/no-show", null));
+
+        race.Count(r => r.StatusCode == HttpStatusCode.OK).Should().Be(1);
+        race.Count(r => r.StatusCode == HttpStatusCode.Conflict).Should().Be(1);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var patient = await dbContext.Patients.AsNoTracking().SingleAsync(p => p.Id == patientId);
+        patient.NoShowCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Post_noshow_writes_the_patient_counter_audit_entry()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        await SeedUserAsync("professional-noshow-audit@ceibos.demo", "TestPass123!", "Professional", professionalId);
+        var professionalToken = await LoginAsync(client, "professional-noshow-audit@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", professionalToken);
+
+        var response = await client.PostAsync($"/api/appointments/{appointment!.Id}/no-show", null);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var counterAudits = await dbContext.AuditEntries
+            .AsNoTracking()
+            .Where(e => e.EntityId == patientId && e.Action == "Updated")
+            .Select(e => e.ChangesJson)
+            .ToListAsync();
+
+        counterAudits.Should().ContainSingle();
+        counterAudits[0].Should().Contain("NoShowCount");
+    }
+
+    [Fact]
+    public async Task Post_appointment_into_a_previous_day_midnight_crossing_appointment_returns_conflict_and_creates_no_row()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        // Existing appointment starts the day before the requested slot and crosses midnight into it.
+        var crossingStart = new DateTimeOffset(DateTime.UtcNow.Date.AddDays(4).AddHours(23).AddMinutes(40), TimeSpan.Zero);
+        using (var seedScope = Factory.Services.CreateScope())
+        {
+            var seedDb = seedScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            seedDb.Appointments.Add(new Appointment(Guid.NewGuid())
+            {
+                PatientId = patientId,
+                ProfessionalId = professionalId,
+                SpecialtyId = CardiologySpecialtyId,
+                StartDateTime = crossingStart,
+                DurationMinutes = 30,
+                Status = AppointmentStatus.Confirmed,
+                IsSobreturno = false,
+                IsLateCancellation = false,
+                CreatedAt = DateTimeOffset.UtcNow,
+                CreatedBy = Guid.Empty,
+                ModifiedAt = DateTimeOffset.UtcNow,
+                ModifiedBy = Guid.Empty
+            });
+            await seedDb.SaveChangesAsync();
+        }
+
+        var requested = new DateTimeOffset(DateTime.UtcNow.Date.AddDays(5).AddMinutes(5), TimeSpan.Zero);
+        var response = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start = requested,
+            isSobreturno = false
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.ProfessionalOverlap");
+
+        using var scope = Factory.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var created = await dbContext.Appointments.AnyAsync(a => a.StartDateTime == requested);
+        created.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Get_appointments_by_date_returns_list_ordered_by_start_and_optionally_filtered_by_professional()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, adminToken, professionalA, patientA) = await SeedScenarioAsync();
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", adminToken);
+        var professionalB = await CreateProfessionalAsync(client, "Ana", "Gomez", "LST0001");
+        var assignB = await client.PutAsJsonAsync($"/api/professionals/{professionalB}/specialties/{CardiologySpecialtyId}", new { isPrimary = true });
+        assignB.EnsureSuccessStatusCode();
+        var patientB = await CreatePatientAsync(client, "DNI", "39111333");
+
+        // Admin is allowed to book and list appointments.
+        var date = DateTimeOffset.UtcNow.Date.AddDays(3);
+        var startA1 = new DateTimeOffset(date.AddHours(10), TimeSpan.Zero);
+        var startB1 = new DateTimeOffset(date.AddHours(9), TimeSpan.Zero);
+        var startA2 = new DateTimeOffset(date.AddHours(14), TimeSpan.Zero);
+
+        var bookingA1 = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId = patientA,
+            professionalId = professionalA,
+            specialtyId = CardiologySpecialtyId,
+            start = startA1,
+            isSobreturno = false
+        });
+        bookingA1.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var bookingB1 = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId = patientB,
+            professionalId = professionalB,
+            specialtyId = CardiologySpecialtyId,
+            start = startB1,
+            isSobreturno = false
+        });
+        bookingB1.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var bookingA2 = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId = patientA,
+            professionalId = professionalA,
+            specialtyId = CardiologySpecialtyId,
+            start = startA2,
+            isSobreturno = false
+        });
+        bookingA2.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var listResponse = await client.GetAsync(
+            $"/api/appointments?from={date:yyyy-MM-dd}T00:00:00Z&to={date.AddDays(1):yyyy-MM-dd}T00:00:00Z");
+        listResponse.EnsureSuccessStatusCode();
+
+        var appointments = await listResponse.Content.ReadFromJsonAsync<IReadOnlyList<AppointmentListItem>>();
+        appointments!.Should().HaveCount(3);
+        appointments.Select(a => a.Start).Should().BeInAscendingOrder();
+        appointments.Select(a => a.ProfessionalId).Should().Contain(professionalA);
+        appointments.Select(a => a.ProfessionalId).Should().Contain(professionalB);
+
+        var filteredResponse = await client.GetAsync(
+            $"/api/appointments?from={date:yyyy-MM-dd}T00:00:00Z&to={date.AddDays(1):yyyy-MM-dd}T00:00:00Z&professionalId={professionalA}");
+        filteredResponse.EnsureSuccessStatusCode();
+
+        var filtered = await filteredResponse.Content.ReadFromJsonAsync<IReadOnlyList<AppointmentListItem>>();
+        filtered!.Should().HaveCount(2);
+        filtered.Should().OnlyContain(a => a.ProfessionalId == professionalA);
+    }
+
+    [Fact]
+    public async Task Get_appointments_without_range_returns_bad_request_RangeRequired()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, _, _) = await SeedScenarioAsync();
+
+        var response = await client.GetAsync("/api/appointments");
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.RangeRequired");
+    }
+
+    [Fact]
+    public async Task Get_appointments_with_a_date_but_no_offset_returns_bad_request_RangeRequired()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, _, _) = await SeedScenarioAsync();
+
+        var response = await client.GetAsync("/api/appointments?from=2026-11-12&to=2026-11-13");
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Code.Should().Be("Appointment.RangeRequired");
+    }
+
+    [Fact]
+    public async Task Get_appointments_with_an_instant_without_offset_returns_bad_request_RangeRequired()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, _, _) = await SeedScenarioAsync();
+
+        // A K-style format accepts a missing offset and assumes the server zone, which would
+        // silently guess what the caller meant.
+        var withoutOffset = await client.GetAsync(
+            "/api/appointments?from=2026-11-12T00:00:00&to=2026-11-13T00:00:00");
+        withoutOffset.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await withoutOffset.Content.ReadFromJsonAsync<ErrorResponse>())!.Code
+            .Should().Be("Appointment.RangeRequired");
+
+        var withOffset = await client.GetAsync(
+            "/api/appointments?from=2026-11-12T00:00:00-03:00&to=2026-11-13T00:00:00-03:00");
+        withOffset.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Get_appointments_with_an_empty_or_inverted_range_returns_bad_request_InvalidRange()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, _, _) = await SeedScenarioAsync();
+
+        var inverted = await client.GetAsync(
+            "/api/appointments?from=2026-11-13T00:00:00Z&to=2026-11-12T00:00:00Z");
+        inverted.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await inverted.Content.ReadFromJsonAsync<ErrorResponse>())!.Code
+            .Should().Be("Appointment.InvalidRange");
+
+        var empty = await client.GetAsync(
+            "/api/appointments?from=2026-11-12T00:00:00Z&to=2026-11-12T00:00:00Z");
+        empty.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await empty.Content.ReadFromJsonAsync<ErrorResponse>())!.Code
+            .Should().Be("Appointment.InvalidRange");
+    }
+
+    [Fact]
+    public async Task Get_appointments_with_the_local_day_range_includes_a_late_evening_local_slot()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        // 21:00 on the local day (UTC-03:00) is already the next UTC day at 00:00Z.
+        var localDay = DateTime.UtcNow.Date.AddDays(4);
+        var start = new DateTimeOffset(localDay.AddDays(1), TimeSpan.Zero);
+
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        // The local day D spans [D 03:00Z, D+1 03:00Z) for UTC-03:00.
+        var localRangeFrom = localDay.AddHours(3);
+        var localRangeTo = localDay.AddDays(1).AddHours(3);
+        var localRange = await client.GetAsync(
+            $"/api/appointments?from={localRangeFrom:yyyy-MM-dd'T'HH:mm:ss}Z&to={localRangeTo:yyyy-MM-dd'T'HH:mm:ss}Z");
+        localRange.EnsureSuccessStatusCode();
+
+        var inLocalDay = await localRange.Content.ReadFromJsonAsync<IReadOnlyList<AppointmentListItem>>();
+        inLocalDay!.Select(a => a.Start).Should().Contain(start);
+
+        // The UTC day D+1 starts at the same instant, so a UTC-day query would include it too;
+        // the UTC day D ends exactly there and would drop it.
+        var utcDay = await client.GetAsync(
+            $"/api/appointments?from={localDay:yyyy-MM-dd'T'HH:mm:ss}Z&to={localDay.AddDays(1):yyyy-MM-dd'T'HH:mm:ss}Z");
+        utcDay.EnsureSuccessStatusCode();
+
+        var inUtcDay = await utcDay.Content.ReadFromJsonAsync<IReadOnlyList<AppointmentListItem>>();
+        inUtcDay!.Select(a => a.Start).Should().NotContain(start);
+    }
+
+    [Fact]
+    public async Task Get_appointments_requires_reception_staff()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, _) = await SeedScenarioAsync();
+
+        await SeedUserAsync("professional-list@ceibos.demo", "TestPass123!", "Professional", professionalId);
+        var professionalToken = await LoginAsync(client, "professional-list@ceibos.demo", "TestPass123!");
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", professionalToken);
+
+        var date = DateTimeOffset.UtcNow.Date.AddDays(3);
+        var response = await client.GetAsync(
+            $"/api/appointments?from={date:yyyy-MM-dd}T00:00:00Z&to={date.AddDays(1):yyyy-MM-dd}T00:00:00Z");
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task Post_cancel_more_than_24h_response_includes_isLateCancellation_false()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = BuildStart();
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        var response = await client.PostAsync($"/api/appointments/{appointment!.Id}/cancel", null);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<CancelResponse>();
+        body!.Id.Should().Be(appointment.Id);
+        body.Status.Should().Be("Cancelled");
+        body.IsLateCancellation.Should().BeFalse();
+
+        // A missing property deserializes into the default false, so pin the key itself.
+        var raw = await response.Content.ReadAsStringAsync();
+        raw.Should().Contain("isLateCancellation");
+    }
+
+    [Fact]
+    public async Task Post_cancel_within_24h_response_includes_isLateCancellation_true()
+    {
+        Skip.IfNot(ContainerAvailable, "SQL Server container is required for appointment endpoint tests");
+
+        var (client, _, professionalId, patientId) = await SeedScenarioAsync();
+
+        var start = DateTimeOffset.UtcNow.AddHours(3);
+        var booked = await client.PostAsJsonAsync("/api/appointments", new
+        {
+            patientId,
+            professionalId,
+            specialtyId = CardiologySpecialtyId,
+            start,
+            isSobreturno = false
+        });
+        booked.StatusCode.Should().Be(HttpStatusCode.Created);
+        var appointment = await booked.Content.ReadFromJsonAsync<CreateAppointmentResponse>();
+
+        var response = await client.PostAsync($"/api/appointments/{appointment!.Id}/cancel", null);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<CancelResponse>();
+        body!.Id.Should().Be(appointment.Id);
+        body.Status.Should().Be("Cancelled");
+        body.IsLateCancellation.Should().BeTrue();
+    }
+
+    private sealed record CancelResponse(Guid Id, string Status, bool IsLateCancellation);
+
+    private sealed record AppointmentListItem(
+        Guid Id,
+        Guid PatientId,
+        Guid ProfessionalId,
+        Guid SpecialtyId,
+        DateTimeOffset Start,
+        int DurationMinutes,
+        string Status,
+        bool IsSobreturno,
+        bool IsLateCancellation);
+
     private sealed record CreateAppointmentResponse(Guid Id);
 
     private sealed record CreateProfessionalResponse(Guid ProfessionalId);

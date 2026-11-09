@@ -1,6 +1,7 @@
 using MediCore.Application.Abstractions;
 using MediCore.Infrastructure.Identity;
 using MediCore.Infrastructure.Persistence;
+using MediCore.Infrastructure.Persistence.Audit;
 using MediCore.Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
@@ -47,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<AuditInterceptor>();
 
         var jwtSettings = configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()

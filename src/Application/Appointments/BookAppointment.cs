@@ -107,10 +107,14 @@ public static class BookAppointment
                 var dayStart = new DateTimeOffset(requestDate, TimeSpan.Zero);
                 var dayEnd = dayStart.AddDays(1);
 
+                // Scan one extra day back: an appointment starting the previous day can cross
+                // midnight into the requested day and must still be considered for overlap.
+                var scanStart = dayStart.AddDays(-1);
+
                 var existingAppointments = await _context.Appointments
                     .Where(a =>
                         (a.ProfessionalId == command.ProfessionalId || a.PatientId == command.PatientId) &&
-                        a.StartDateTime >= dayStart &&
+                        a.StartDateTime >= scanStart &&
                         a.StartDateTime < dayEnd &&
                         a.Status == AppointmentStatus.Confirmed)
                     .ToListAsync(cancellationToken);
