@@ -65,7 +65,19 @@ export function TodayPage() {
     enabled: date !== '',
   });
 
+  // A professional account without a professional link is refused by the appointments
+  // list with Appointment.NotOwner. That is its real state, not a failure to retry.
+  const isNotLinked = useMemo(() => {
+    const response = (
+      appointmentsError as { response?: { status?: number; data?: { code?: string } } } | null
+    )?.response;
+    return response?.status === 403 && response.data?.code === 'Appointment.NotOwner';
+  }, [appointmentsError]);
+
   const errorMessage = useMemo(() => {
+    if (isNotLinked) {
+      return null;
+    }
     if (summaryError) {
       return 'Unable to load the dashboard summary. Please try again.';
     }
@@ -73,7 +85,7 @@ export function TodayPage() {
       return 'Unable to load the appointments. Please try again.';
     }
     return null;
-  }, [summaryError, appointmentsError]);
+  }, [isNotLinked, summaryError, appointmentsError]);
 
   return (
     <div data-testid="today-page" className="flex flex-col gap-5">
@@ -90,6 +102,13 @@ export function TodayPage() {
         />
       </div>
 
+      {isNotLinked && (
+        <p className="rounded-card border border-line bg-card p-4 text-sm text-muted">
+          This account is not linked to a professional, so there are no personal
+          appointments to show. The totals above cover the whole institution.
+        </p>
+      )}
+
       {errorMessage && (
         <p role="alert" className="rounded-card bg-danger-wash p-4 text-sm text-danger">
           {errorMessage}
@@ -105,7 +124,7 @@ export function TodayPage() {
           value={summary?.appointments.total}
           subline={
             summary &&
-            `${summary.appointments.completed} completed · ${summary.appointments.noShow} no-show`
+            `All professionals · ${summary.appointments.completed} completed · ${summary.appointments.noShow} no-show`
           }
         />
         <KpiTile

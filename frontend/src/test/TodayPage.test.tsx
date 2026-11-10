@@ -183,3 +183,93 @@ describe('TodayPage', () => {
     expect(screen.queryByText(/\/\s*2/i)).not.toBeInTheDocument();
   });
 });
+
+
+describe('TodayPage range and honesty guards', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('derives the range from the local calendar day, not the UTC day', async () => {
+    // In a zone with a non-zero offset the two days can differ; skip where they never do.
+    if (new Date().getTimezoneOffset() === 0) {
+      return;
+    }
+
+    const get = vi.spyOn(apiClient, 'get').mockImplementation((url: string) => {
+      if (url === '/dashboard/summary') return Promise.resolve({ data: summaryFixture() });
+      if (url === '/appointments') return Promise.resolve({ data: [] });
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+
+    signIn('Admin');
+    renderAt('/today');
+
+    await waitFor(() => expect(get).toHaveBeenCalled());
+    const call = get.mock.calls.find(([url]) => url === '/dashboard/summary')!;
+    const params = (call[1] as { params: { from: string; to: string } }).params;
+
+    const from = new Date(params.from);
+    const now = new Date();
+    expect([from.getFullYear(), from.getMonth(), from.getDate()]).toEqual([
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    ]);
+    expect([from.getHours(), from.getMinutes(), from.getSeconds()]).toEqual([0, 0, 0]);
+    expect(params.from).toMatch(/T00:00:00[+-]\d{2}:\d{2}$/);
+    expect(params.to).toMatch(/T00:00:00[+-]\d{2}:\d{2}$/);
+  });
+
+  it('renders an em dash for every count the payload does not carry', async () => {
+    vi.spyOn(apiClient, 'get').mockImplementation((url: string) =>
+      url === '/dashboard/summary'
+        ? Promise.resolve({ data: { from: '', to: '' } })
+        : Promise.resolve({ data: [] })
+    );
+
+    signIn('Admin');
+    renderAt('/today');
+
+    await waitFor(() => expect(screen.getAllByText('—')).toHaveLength(4));
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
+  });
+
+  it('renders no figure that is not in the payload', async () => {
+    vi.spyOn(apiClient, 'get').mockImplementation((url: string) =>
+      url === '/dashboard/summary'
+        ? Promise.resolve({ data: summaryFixture() })
+        : Promise.resolve({ data: [] })
+    );
+
+    signIn('Admin');
+    renderAt('/today');
+    await screen.findByText('6');
+
+    const text = document.body.textContent ?? '';
+    // The payload carries no occupancy, no free-slot count and no sobreturno cap:
+    // a designer's instinct is to invent exactly those three.
+    expect(text).not.toMatch(/%/);
+    expect(text).not.toMatch(/free slots/i);
+    expect(text).not.toMatch(/occupancy/i);
+    expect(text).not.toMatch(/cap/i);
+  });
+
+  it('shows the unlinked state instead of an error when the list refuses the account', async () => {
+    vi.spyOn(apiClient, 'get').mockImplementation((url: string) =>
+      url === '/dashboard/summary'
+        ? Promise.resolve({ data: summaryFixture() })
+        : Promise.reject({
+            response: { status: 403, data: { code: 'Appointment.NotOwner' } },
+          })
+    );
+
+    signIn('Professional');
+    renderAt('/today');
+
+    expect(
+      await screen.findByText(/not linked to a professional/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
