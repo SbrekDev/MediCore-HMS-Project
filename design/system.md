@@ -41,5 +41,15 @@ Scale in use (Tailwind defaults, no custom overrides): page title `text-[17px]`/
 - Forms: label above field, `rounded-control`, `border-line`, focus ring in brand at 45% alpha, errors as `text-danger` plus `role="alert"`.
 - Feedback: page-level problems use `role="alert"`; inline field errors sit under the field.
 
-## Gaps this slice did not close
-Page contents (patients, professionals, agenda, booking, my appointments, login) still use browser-default markup; tasks T3–T7 restyle them against these tokens.
+## Component vocabulary
+Screens do not write utility classes for controls, tables, cards or badges: they compose
+`frontend/src/components/ui/` — Button, Input/Select/Textarea/Checkbox, Field (label + hint +
+error wiring), Card/CardHeader, Table/Th/Td, Badge (brand/ok/warn/danger/neutral), Alert,
+EmptyState and PageHeader. Appointment statuses share one vocabulary in
+`frontend/src/components/appointmentStatus.ts`. Adding a primitive is preferred over writing a
+one-off style; a raw control inside a screen is a defect.
+
+## Known debt
+`TodayPage` still carries a private copy of the status-to-tone mapping instead of importing the
+shared helper. Its markup was restored from git after a careless edit, and converging it is a
+follow-up, not a silent divergence.
