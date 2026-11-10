@@ -1,7 +1,22 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession, decodeProfessionalId } from '../../../auth/session';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  EmptyState,
+  Field,
+  Input,
+  PageHeader,
+  Table,
+  Td,
+  Th,
+} from '../../../components/ui';
 import { toDayRangeStrings, pad } from '../../booking/components/bookingSchema';
+import { statusLabel, statusTone } from '../../../components/appointmentStatus';
 import { describeBookingError } from '../../booking/errors';
 import {
   completeAppointment,
@@ -18,10 +33,6 @@ function todayLocalString(): string {
 function formatTime(start: string): string {
   const date = new Date(start);
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
-function statusLabel(status: string): string {
-  return status === 'NoShow' ? 'No-show' : status;
 }
 
 export function MyAppointmentsPage() {
@@ -98,69 +109,108 @@ export function MyAppointmentsPage() {
 
   if (professionalId === null) {
     return (
-      <div data-testid="my-appointments-page">
-        <h2>My appointments</h2>
-        <p role="alert">This account is not linked to a professional.</p>
+      <div data-testid="my-appointments-page" className="flex flex-col gap-5">
+        <PageHeader title="My appointments" />
+        <Alert>This account is not linked to a professional.</Alert>
       </div>
     );
   }
 
   return (
-    <div data-testid="my-appointments-page">
-      <h2>My appointments</h2>
+    <div data-testid="my-appointments-page" className="flex flex-col gap-5">
+      <PageHeader
+        title="My appointments"
+        description="Your appointments for the selected day."
+      />
 
       {(serverError ?? listErrorMessage) && (
-        <p role="alert">{serverError ?? listErrorMessage}</p>
+        <Alert>{serverError ?? listErrorMessage}</Alert>
       )}
 
-      <div>
-        <label htmlFor="my-appointments-date">Date</label>
-        <input
-          id="my-appointments-date"
-          type="date"
-          value={date}
-          onChange={(event) => {
-            setDate(event.target.value);
-            setServerError(null);
-          }}
-        />
-      </div>
+      <Card>
+        <CardHeader title="Select date" />
+        <div className="p-5">
+          <Field label="Date" htmlFor="my-appointments-date">
+            <Input
+              id="my-appointments-date"
+              type="date"
+              value={date}
+              onChange={(event) => {
+                setDate(event.target.value);
+                setServerError(null);
+              }}
+            />
+          </Field>
+        </div>
+      </Card>
 
-      {isLoading && <p>Loading appointments…</p>}
+      <Card>
+        <CardHeader title="Appointments" />
+        {isLoading && (
+          <p className="px-5 py-8 text-center text-[13px] text-muted-2">
+            Loading appointments…
+          </p>
+        )}
 
-      {appointments.length === 0 ? (
-        <p>No appointments for this day.</p>
-      ) : (
-        <ul>
-          {appointments.map((appointment: MyAppointmentListItemDto) => (
-            <li key={appointment.id}>
-              <div>
-                <span>{appointment.patientName}</span>
-                {' — '}
-                <span>{formatTime(appointment.start)}</span>
-                {' — '}
-                <span>{statusLabel(appointment.status)}</span>
-              </div>
-              <div>
-                <button
-                  type="button"
-                  aria-label={`Complete appointment ${appointment.id}`}
-                  onClick={() => complete.mutate(appointment.id)}
-                >
-                  Complete
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Mark appointment ${appointment.id} as no-show`}
-                  onClick={() => noShow.mutate(appointment.id)}
-                >
-                  Mark no-show
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+        {!isLoading && appointments.length === 0 && (
+          <EmptyState>No appointments for this day.</EmptyState>
+        )}
+
+        {!isLoading && appointments.length > 0 && (
+          <Table>
+            <thead>
+              <tr>
+                <Th>Time</Th>
+                <Th>Patient</Th>
+                <Th>Status</Th>
+                <Th>Sobreturno</Th>
+                <Th className="text-right">Actions</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {appointments.map((appointment: MyAppointmentListItemDto) => (
+                <tr key={appointment.id}>
+                  <Td className="font-mono text-xs">
+                    {formatTime(appointment.start)}
+                  </Td>
+                  <Td>{appointment.patientName}</Td>
+                  <Td>
+                    <Badge tone={statusTone(appointment.status)}>
+                      {statusLabel(appointment.status)}
+                    </Badge>
+                  </Td>
+                  <Td>
+                    {appointment.isSobreturno && (
+                      <Badge tone="warn">Sobreturno</Badge>
+                    )}
+                  </Td>
+                  <Td className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        aria-label={`Complete appointment ${appointment.id}`}
+                        onClick={() => complete.mutate(appointment.id)}
+                      >
+                        Complete
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        aria-label={`Mark appointment ${appointment.id} as no-show`}
+                        onClick={() => noShow.mutate(appointment.id)}
+                      >
+                        Mark no-show
+                      </Button>
+                    </div>
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
+      </Card>
     </div>
   );
 }
