@@ -1,5 +1,17 @@
+import type { ChangeEvent } from 'react';
 import { useState, type FormEvent } from 'react';
-import type { AssignSpecialtyRequest, ProfessionalDto, SpecialtyDto } from '../types';
+import {
+  Button,
+  Field,
+  Input,
+  Select,
+  Checkbox,
+} from '../../../components/ui';
+import type {
+  AssignSpecialtyRequest,
+  ProfessionalDto,
+  SpecialtyDto,
+} from '../types';
 
 interface SpecialtyAssignmentProps {
   professional: ProfessionalDto;
@@ -31,14 +43,9 @@ export function SpecialtyAssignment({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h3>
-        Assign specialty to {professional.firstName} {professional.lastName}
-      </h3>
-
-      <div>
-        <label htmlFor="specialty">Specialty</label>
-        <select
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <Field label="Specialty" htmlFor="specialty">
+        <Select
           id="specialty"
           value={specialtyId}
           onChange={(event) => setSpecialtyId(event.target.value)}
@@ -50,38 +57,43 @@ export function SpecialtyAssignment({
               {specialty.name}
             </option>
           ))}
-        </select>
+        </Select>
+      </Field>
+
+      <div className="rounded-card border border-line bg-canvas p-4">
+        <Checkbox
+          id="isPrimary"
+          checked={isPrimary}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => setIsPrimary(event.target.checked)}
+          label={`Mark this as ${professional.firstName} ${professional.lastName}'s primary`}
+        />
       </div>
 
-      <div>
-        <label htmlFor="isPrimary">
-          <input
-            id="isPrimary"
-            type="checkbox"
-            checked={isPrimary}
-            onChange={(event) => setIsPrimary(event.target.checked)}
-          />
-          Primary
-        </label>
-      </div>
-
-      <div>
-        <label htmlFor="durationOverride">Duration override (minutes)</label>
-        <input
+      <Field
+        label="Duration override (minutes)"
+        htmlFor="durationOverride"
+      >
+        <Input
           id="durationOverride"
           type="number"
           value={durationOverride}
           onChange={(event) => setDurationOverride(event.target.value)}
           placeholder="Use specialty default"
         />
-      </div>
+      </Field>
 
-      <button type="submit" disabled={isLoading || specialtyId === ''}>
-        Save assignment
-      </button>
-      <button type="button" onClick={onCancel}>
-        Cancel
-      </button>
+      <div className="flex items-center gap-2">
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={isLoading || specialtyId === ''}
+        >
+          Save assignment
+        </Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
     </form>
   );
 }

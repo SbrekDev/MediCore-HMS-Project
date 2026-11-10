@@ -2,6 +2,16 @@ import { useEffect } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  Alert,
+  Button,
+  Card,
+  CardHeader,
+  EmptyState,
+  Field,
+  Input,
+  Select,
+} from '../../../components/ui';
+import {
   agendaFormSchema,
   toUpdateAgendaRequest,
   type AgendaFormData,
@@ -50,70 +60,128 @@ export function AgendaBlocksEditor({
   }, [agenda, reset]);
 
   return (
-    <form
-      onSubmit={handleSubmit((values) => onSave(toUpdateAgendaRequest(values)))}
-      noValidate
-    >
-      {serverError && <p role="alert">{serverError}</p>}
+    <div className="flex flex-col gap-5">
+      <Card>
+        <CardHeader title="Sobreturno cap" />
+        <div className="p-5">
+          <p className="text-[13px] text-muted">
+            This is the maximum number of extra appointments the professional can
+            accept in a single day.
+          </p>
+          <div className="mt-4 max-w-[200px]">
+            <Field
+              label="Max sobreturnos per day"
+              htmlFor="maxSobreturnosPerDay"
+              error={errors.maxSobreturnosPerDay?.message}
+            >
+              <Input
+                id="maxSobreturnosPerDay"
+                type="number"
+                min={0}
+                {...register('maxSobreturnosPerDay', { valueAsNumber: true })}
+              />
+            </Field>
+          </div>
+        </div>
+      </Card>
 
-      <div>
-        <label htmlFor="maxSobreturnosPerDay">Max sobreturnos per day</label>
-        <input
-          id="maxSobreturnosPerDay"
-          type="number"
-          min={0}
-          {...register('maxSobreturnosPerDay', { valueAsNumber: true })}
-        />
-        {errors.maxSobreturnosPerDay && (
-          <span>{errors.maxSobreturnosPerDay.message}</span>
-        )}
-      </div>
-
-      <h3>Weekly availability</h3>
-
-      {fields.length === 0 && <p>No blocks configured yet.</p>}
-
-      {fields.map((field, index) => (
-        <fieldset key={field.id}>
-          <legend>Block {index + 1}</legend>
-
-          <label htmlFor={`block-day-${index}`}>Day {index + 1}</label>
-          <select id={`block-day-${index}`} {...register(`blocks.${index}.dayOfWeek`)}>
-            {DAYS_OF_WEEK.map((day) => (
-              <option key={day} value={day}>
-                {day}
-              </option>
-            ))}
-          </select>
-
-          <label htmlFor={`block-start-${index}`}>Start {index + 1}</label>
-          <input
-            id={`block-start-${index}`}
-            type="time"
-            {...register(`blocks.${index}.start`)}
+      <form
+        onSubmit={handleSubmit((values) => onSave(toUpdateAgendaRequest(values)))}
+        noValidate
+      >
+        <Card>
+          <CardHeader
+            title="Weekly availability"
+            actions={
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={isSaving}
+              >
+                Save agenda
+              </Button>
+            }
           />
-          {errors.blocks?.[index]?.start && (
-            <span>{errors.blocks[index]?.start?.message}</span>
-          )}
+          <div className="p-5">
+            {serverError && (
+              <div className="mb-5">
+                <Alert>{serverError}</Alert>
+              </div>
+            )}
 
-          <label htmlFor={`block-end-${index}`}>End {index + 1}</label>
-          <input id={`block-end-${index}`} type="time" {...register(`blocks.${index}.end`)} />
-          {errors.blocks?.[index]?.end && (
-            <span>{errors.blocks[index]?.end?.message}</span>
-          )}
+            {fields.length === 0 && (
+              <EmptyState>No blocks configured yet.</EmptyState>
+            )}
 
-          <button type="button" onClick={() => remove(index)}>
-            Remove block {index + 1}
-          </button>
-        </fieldset>
-      ))}
+            {fields.map((field, index) => (
+              <div
+                key={field.id}
+                className="grid grid-cols-1 items-start gap-4 border-b border-line pb-4 last:border-b-0 last:pb-0 sm:grid-cols-[1.25fr_1fr_1fr_auto] sm:items-end"
+              >
+                <Field
+                  label={`Day ${index + 1}`}
+                  htmlFor={`block-day-${index}`}
+                  error={errors.blocks?.[index]?.dayOfWeek?.message}
+                >
+                  <Select
+                    id={`block-day-${index}`}
+                    {...register(`blocks.${index}.dayOfWeek`)}
+                  >
+                    {DAYS_OF_WEEK.map((day) => (
+                      <option key={day} value={day}>
+                        {day}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
 
-      <button type="button" onClick={() => append({ ...NEW_BLOCK })}>
-        Add block
-      </button>
-      <button type="submit" disabled={isSaving}>
-        Save agenda
-      </button>
-    </form>
+                <Field
+                  label={`Start ${index + 1}`}
+                  htmlFor={`block-start-${index}`}
+                  error={errors.blocks?.[index]?.start?.message}
+                >
+                  <Input
+                    id={`block-start-${index}`}
+                    type="time"
+                    {...register(`blocks.${index}.start`)}
+                  />
+                </Field>
+
+                <Field
+                  label={`End ${index + 1}`}
+                  htmlFor={`block-end-${index}`}
+                  error={errors.blocks?.[index]?.end?.message}
+                >
+                  <Input
+                    id={`block-end-${index}`}
+                    type="time"
+                    {...register(`blocks.${index}.end`)}
+                  />
+                </Field>
+
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  onClick={() => remove(index)}
+                >
+                  Remove block {index + 1}
+                </Button>
+              </div>
+            ))}
+
+            <div className="mt-5 flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => append({ ...NEW_BLOCK })}
+              >
+                Add block
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </form>
+    </div>
   );
 }

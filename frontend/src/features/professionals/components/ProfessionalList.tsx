@@ -1,3 +1,10 @@
+import {
+  Button,
+  EmptyState,
+  Table,
+  Td,
+  Th,
+} from '../../../components/ui';
 import type { ProfessionalDto } from '../types';
 
 interface ProfessionalListProps {
@@ -12,40 +19,46 @@ export function ProfessionalList({
   onAssign,
 }: ProfessionalListProps) {
   if (isLoading) {
-    return <p>Loading professionals…</p>;
+    return (
+      <p className="px-5 py-8 text-center text-[13px] text-muted-2">
+        Loading professionals…
+      </p>
+    );
   }
 
   if (professionals.length === 0) {
-    return <p>No professionals found.</p>;
+    return <EmptyState>No professionals found.</EmptyState>;
   }
 
   return (
-    <table>
+    <Table>
       <thead>
         <tr>
-          <th>Name</th>
-          <th>MN</th>
-          <th>MPs</th>
-          <th>Actions</th>
+          <Th>Name</Th>
+          <Th>MN</Th>
+          <Th>MPs</Th>
+          <Th>Actions</Th>
         </tr>
       </thead>
       <tbody>
         {professionals.map((professional) => (
           <tr key={professional.id}>
-            <td>{`${professional.firstName} ${professional.lastName}`}</td>
-            <td>{professional.nationalLicenseMN}</td>
-            <td>{`${professional.provincialLicenses.length} MPs`}</td>
-            <td>
-              <button
+            <Td>{`${professional.firstName} ${professional.lastName}`}</Td>
+            <Td>{professional.nationalLicenseMN}</Td>
+            <Td>{`${professional.provincialLicenses.length} MPs`}</Td>
+            <Td>
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => onAssign(professional)}
               >
                 Assign specialty
-              </button>
-            </td>
+              </Button>
+            </Td>
           </tr>
         ))}
       </tbody>
-    </table>
+    </Table>
   );
 }

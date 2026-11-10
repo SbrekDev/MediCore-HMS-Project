@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  Alert,
+  Button,
+  Card,
+  CardHeader,
+  PageHeader,
+} from '../../../components/ui';
+import {
   assignSpecialty,
   createProfessional,
   getProfessionals,
@@ -14,7 +21,8 @@ import type { AssignSpecialtyRequest, ProfessionalDto } from '../types';
 export function ProfessionalsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
-  const [selectedProfessional, setSelectedProfessional] = useState<ProfessionalDto | null>(null);
+  const [selectedProfessional, setSelectedProfessional] =
+    useState<ProfessionalDto | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [assignmentError, setAssignmentError] = useState<string | null>(null);
 
@@ -65,7 +73,10 @@ export function ProfessionalsPage() {
     },
   });
 
-  function handleAssign(specialtyId: string, payload: AssignSpecialtyRequest): void {
+  function handleAssign(
+    specialtyId: string,
+    payload: AssignSpecialtyRequest
+  ): void {
     if (!selectedProfessional) return;
     assign.mutate({
       professionalId: selectedProfessional.id,
@@ -75,59 +86,106 @@ export function ProfessionalsPage() {
   }
 
   return (
-    <div data-testid="professionals-page">
-      <h2>Professionals</h2>
-
-      {!showForm && !selectedProfessional && (
-        <button type="button" onClick={() => setShowForm(true)}>
-          New professional
-        </button>
-      )}
+    <div data-testid="professionals-page" className="flex flex-col gap-5">
+      <PageHeader
+        title="Professionals"
+        description="Manage medical staff and assign specialties."
+        actions={
+          !showForm &&
+          !selectedProfessional && (
+            <Button type="button" variant="primary" onClick={() => setShowForm(true)}>
+              New professional
+            </Button>
+          )
+        }
+      />
 
       {showForm && (
-        <>
-          {formError && <p role="alert">{formError}</p>}
+        <Card>
+          <CardHeader
+            title="New professional"
+            actions={
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setShowForm(false);
+                  setFormError(null);
+                }}
+              >
+                Cancel
+              </Button>
+            }
+          />
           <ProfessionalForm
+            serverError={formError}
             onSubmit={(request) => create.mutate(request)}
             onCancel={() => {
               setShowForm(false);
               setFormError(null);
             }}
           />
-        </>
+        </Card>
       )}
 
       {selectedProfessional && (
-        <>
-          {assignmentError && <p role="alert">{assignmentError}</p>}
-          {isSpecialtiesError && (
-            <p role="alert">Unable to load specialties. Please try again.</p>
-          )}
-          <SpecialtyAssignment
-            professional={selectedProfessional}
-            specialties={specialties}
-            isLoading={isLoadingSpecialties || assign.isPending}
-            onAssign={handleAssign}
-            onCancel={() => {
-              setSelectedProfessional(null);
-              setAssignmentError(null);
-            }}
+        <Card>
+          <CardHeader
+            title={`Assign specialty to ${selectedProfessional.firstName} ${selectedProfessional.lastName}`}
+            actions={
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setSelectedProfessional(null);
+                  setAssignmentError(null);
+                }}
+              >
+                Cancel
+              </Button>
+            }
           />
-        </>
+          <div className="p-5">
+            {assignmentError && (
+              <div className="mb-5">
+                <Alert>{assignmentError}</Alert>
+              </div>
+            )}
+            {isSpecialtiesError && (
+              <div className="mb-5">
+                <Alert>Unable to load specialties. Please try again.</Alert>
+              </div>
+            )}
+            <SpecialtyAssignment
+              professional={selectedProfessional}
+              specialties={specialties}
+              isLoading={isLoadingSpecialties || assign.isPending}
+              onAssign={handleAssign}
+              onCancel={() => {
+                setSelectedProfessional(null);
+                setAssignmentError(null);
+              }}
+            />
+          </div>
+        </Card>
       )}
 
       {!showForm && !selectedProfessional && (
-        isProfessionalsError ? (
-          <p role="alert">Unable to load professionals. Please try again.</p>
-        ) : (
-          <ProfessionalList
-            professionals={professionals}
-            isLoading={isLoadingProfessionals}
-            onAssign={setSelectedProfessional}
-          />
-        )
+        <Card>
+          <CardHeader title="Professional directory" />
+          {isProfessionalsError ? (
+            <div className="p-5">
+              <Alert>Unable to load professionals. Please try again.</Alert>
+            </div>
+          ) : (
+            <ProfessionalList
+              professionals={professionals}
+              isLoading={isLoadingProfessionals}
+              onAssign={setSelectedProfessional}
+            />
+          )}
+        </Card>
       )}
     </div>
   );
 }
-

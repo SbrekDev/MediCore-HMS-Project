@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MediCore HMS — design system (as found)</title>
+<style>
+  :root {
+    --text: #6b6375; --text-h: #08060d; --bg: #fff; --border: #e5e4e7;
+    --code-bg: #f4f3ec; --accent: #aa3bff; --accent-bg: rgba(170,59,255,.1);
+    --accent-border: rgba(170,59,255,.5);
+    --shadow: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -2px rgba(0,0,0,.05);
+    --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+    --mono: ui-monospace, Consolas, monospace;
+    font: 18px/145% var(--sans); letter-spacing: .18px; color: var(--text); background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 40px 48px 64px; max-width: 1440px; }
+  h1, h2 { font-family: var(--sans); font-weight: 500; color: var(--text-h); }
+  h1 { font-size: 40px; letter-spacing: -1.2px; margin: 0 0 4px; }
+  h2 { font-size: 20px; letter-spacing: -.24px; margin: 40px 0 12px; }
+  p { margin: 0; }
+  .sub { font-size: 14px; max-width: 720px; }
+  .note { font-size: 13px; color: #8a8496; margin-top: 8px; max-width: 720px; }
+  code { font-family: var(--mono); font-size: 13px; background: var(--code-bg); color: var(--text-h); padding: 2px 6px; border-radius: 4px; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; }
+  .swatch { width: 168px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .swatch .chip { height: 56px; }
+  .swatch .meta { padding: 8px 10px; font-size: 12px; line-height: 1.5; }
+  .swatch .meta b { display: block; color: var(--text-h); font-weight: 600; }
+  .scale > div { border-bottom: 1px solid var(--border); padding: 10px 0; display: flex; align-items: baseline; gap: 20px; }
+  .scale span { font-size: 12px; color: #8a8496; min-width: 150px; font-family: var(--mono); }
+  .box { border: 1px solid var(--border); border-radius: 8px; padding: 16px; background: #fff; box-shadow: var(--shadow); width: 320px; }
+  table { border-collapse: collapse; font-size: 15px; width: 640px; }
+  td, th { padding: 6px 8px; text-align: left; }
+  .grid { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+  <h1>MediCore HMS — design system</h1>
+  <p class="sub">Synchronized from <code>frontend/src/index.css</code>. These are untouched Vite starter values, not decisions taken for a hospital product.</p>
+  <p class="note">Recorded so the gap is visible: there is no brand colour, no status colours, no radius scale and no component rules. Every screen therefore renders with browser defaults.</p>
+
+  <h2>Colour</h2>
+  <div class="row">
+    <div class="swatch"><div class="chip" style="background:#6b6375"></div><div class="meta"><b>--text</b>#6b6375</div></div>
+    <div class="swatch"><div class="chip" style="background:#08060d"></div><div class="meta"><b>--text-h</b>#08060d</div></div>
+    <div class="swatch"><div class="chip" style="background:#e5e4e7"></div><div class="meta"><b>--border</b>#e5e4e7</div></div>
+    <div class="swatch"><div class="chip" style="background:#f4f3ec"></div><div class="meta"><b>--code-bg</b>#f4f3ec</div></div>
+    <div class="swatch"><div class="chip" style="background:#aa3bff"></div><div class="meta"><b>--accent</b>#aa3bff</div></div>
+    <div class="swatch"><div class="chip" style="background:rgba(170,59,255,.1)"></div><div class="meta"><b>--accent-bg</b>10%</div></div>
+    <div class="swatch"><div class="chip" style="background:#fff"></div><div class="meta"><b>--bg</b>#ffffff</div></div>
+  </div>
+  <p class="note">Missing entirely: success, warning, danger, info. Status badges and validation messages have no visual language today.</p>
+
+  <h2>Typography</h2>
+  <div class="scale">
+    <div><span>h1 · 56px</span><span style="font-size:56px;letter-spacing:-1.68px;color:var(--text-h);font-family:var(--sans)">Patients</span></div>
+    <div><span>h2 · 24px</span><span style="font-size:24px;letter-spacing:-.24px;color:var(--text-h)">Today's appointments</span></div>
+    <div><span>body · 18px</span><span>María González · DNI 12345678 · Cardiología</span></div>
+    <div><span>mono · 15px</span><code>08:30</code></div>
+  </div>
+
+  <h2>Radius, shadow, spacing</h2>
+  <div class="grid">
+    <div class="box"><b style="color:var(--text-h)">Radius</b><p style="font-size:14px">Only <code>4px</code> on inline code. No card or field radius exists.</p></div>
+    <div class="box"><b style="color:var(--text-h)">Shadow</b><p style="font-size:14px">One token, used nowhere yet.</p></div>
+    <div class="box"><b style="color:var(--text-h)">Spacing</b><p style="font-size:14px">No scale: <code>32px 0</code> above h1, <code>8px</code> below h2.</p></div>
+  </div>
+
+  <h2>Components as they exist today</h2>
+  <div class="grid">
+    <div>
+      <p class="note" style="margin:0 0 8px">Form controls — browser defaults</p>
+      <p><label>First name <input value="Laura"></label></p>
+      <p><label>Document type <select><option>DNI</option><option>Pasaporte</option></select></label></p>
+      <p><button type="button">Save agenda</button></p>
+    </div>
+    <div>
+      <p class="note" style="margin:0 0 8px">Table — no borders, no alignment rules</p>
+      <table>
+        <tr><th>Time</th><th>Patient</th><th>Status</th></tr>
+        <tr><td>08:00</td><td>María González</td><td>Confirmed</td></tr>
+        <tr><td>08:30</td><td>Lucía Fernández</td><td>NoShow</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h2>Layout rule that shapes every page</h2>
+  <div class="box" style="width:100%;max-width:720px;text-align:center">
+    <b style="color:var(--text-h)">#root</b>
+    <p style="font-size:14px">1126px · <code>margin: 0 auto</code> · <code>text-align: center</code> · 1px inline border</p>
+    <p class="note">The centred column and centred text are why the product reads as a scaffold. This is the first thing the redesign replaces.</p>
+  </div>
+</body>
+</html>

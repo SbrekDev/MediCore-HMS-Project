@@ -1,5 +1,13 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  Alert,
+  Card,
+  CardHeader,
+  Field,
+  PageHeader,
+  Select,
+} from '../../../components/ui';
 import { getProfessionals } from '../../professionals/api';
 import {
   createAgendaException,
@@ -82,43 +90,59 @@ export function AgendaPage() {
   });
 
   return (
-    <div data-testid="agenda-page">
-      <h2>Agenda</h2>
+    <div data-testid="agenda-page" className="flex flex-col gap-5">
+      <PageHeader
+        title="Agenda"
+        description="Manage weekly availability and date exceptions."
+      />
 
-      <div>
-        <label htmlFor="agenda-professional">Professional</label>
-        <select
-          id="agenda-professional"
-          value={professionalId}
-          onChange={(event) => {
-            setProfessionalId(event.target.value);
-            setSaveError(null);
-            setExceptionError(null);
-            setDeleteError(null);
-          }}
-        >
-          <option value="">Select a professional</option>
-          {professionals.map((professional) => (
-            <option key={professional.id} value={professional.id}>
-              {professional.firstName} {professional.lastName}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Card>
+        <CardHeader title="Professional" />
+        <div className="p-5">
+          {isProfessionalsError ? (
+            <Alert>Unable to load professionals. Please try again.</Alert>
+          ) : (
+            <div className="max-w-md">
+              <Field label="Professional" htmlFor="agenda-professional">
+                <Select
+                  id="agenda-professional"
+                  value={professionalId}
+                  disabled={isLoadingProfessionals}
+                  onChange={(event) => {
+                    setProfessionalId(event.target.value);
+                    setSaveError(null);
+                    setExceptionError(null);
+                    setDeleteError(null);
+                  }}
+                >
+                  <option value="">Select a professional</option>
+                  {professionals.map((professional) => (
+                    <option key={professional.id} value={professional.id}>
+                      {professional.firstName} {professional.lastName}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+          )}
 
-      {isProfessionalsError && (
-        <p role="alert">Unable to load professionals. Please try again.</p>
+          {isLoadingProfessionals && (
+            <p className="mt-3 text-[13px] text-muted-2">Loading professionals…</p>
+          )}
+
+          {professionalId === '' && !isProfessionalsError && !isLoadingProfessionals && (
+            <p className="text-[13px] text-muted">
+              Select a professional to edit their agenda.
+            </p>
+          )}
+        </div>
+      </Card>
+
+      {isLoadingAgenda && (
+        <p className="text-[13px] text-muted-2">Loading agenda…</p>
       )}
 
-      {isLoadingProfessionals && <p>Loading professionals…</p>}
-
-      {professionalId === '' && !isProfessionalsError && (
-        <p>Select a professional to edit their agenda.</p>
-      )}
-
-      {isLoadingAgenda && <p>Loading agenda…</p>}
-
-      {isAgendaError && <p role="alert">Unable to load the agenda. Please try again.</p>}
+      {isAgendaError && <Alert>Unable to load the agenda. Please try again.</Alert>}
 
       {agenda && (
         <>
@@ -129,7 +153,7 @@ export function AgendaPage() {
             onSave={(request) => save.mutate(request)}
           />
 
-          {deleteError && <p role="alert">{deleteError}</p>}
+          {deleteError && <Alert>{deleteError}</Alert>}
 
           <AgendaExceptionsEditor
             // Keyed by professional as well: returning to an already cached agenda does

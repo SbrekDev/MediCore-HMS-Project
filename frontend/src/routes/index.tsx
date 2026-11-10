@@ -1,18 +1,15 @@
-import { createBrowserRouter, Navigate } from 'react-router';
+import { createBrowserRouter } from 'react-router';
 import { Layout } from '../components/Layout';
 import { RequireRole } from '../auth/RequireRole';
+import { IndexRedirect } from './IndexRedirect';
+import { ADMIN_ONLY, CLINICAL_STAFF, RECEPTION_STAFF } from './rolePolicies';
 import { LoginPage } from '../features/auth/pages/LoginPage';
 import { PatientsPage } from '../features/patients/pages/PatientsPage';
 import { ProfessionalsPage } from '../features/professionals/pages/ProfessionalsPage';
 import { AgendaPage } from '../features/agenda/pages/AgendaPage';
 import { BookingPage } from '../features/booking/pages/BookingPage';
 import { MyAppointmentsPage } from '../features/my-appointments/pages/MyAppointmentsPage';
-
-// Mirrors the server policy matrix: Admin+Receptionist for patients/booking,
-// Admin for the professional catalog and the agenda (every agenda write is AdminOnly).
-const RECEPTION_STAFF = ['Admin', 'Receptionist'] as const;
-const CLINICAL_STAFF = ['Admin', 'Receptionist', 'Professional'] as const;
-const ADMIN_ONLY = ['Admin'] as const;
+import { TodayPage } from '../features/today/pages/TodayPage';
 
 export const routes = [
   {
@@ -27,7 +24,15 @@ export const routes = [
       </RequireRole>
     ),
     children: [
-      { index: true, element: <Navigate to="/patients" replace /> },
+      { index: true, element: <IndexRedirect /> },
+      {
+        path: 'today',
+        element: (
+          <RequireRole allowed={CLINICAL_STAFF}>
+            <TodayPage />
+          </RequireRole>
+        ),
+      },
       {
         path: 'patients',
         element: (

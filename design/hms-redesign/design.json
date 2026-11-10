@@ -1,0 +1,34 @@
+{
+  "title": "MediCore HMS — clinical dashboard redesign",
+  "brief": "Redesign the MediCore HMS frontend, which currently renders as a centred Vite scaffold: professional hospital-dashboard look for front desk and clinical staff, modelled on MedLink-style healthcare admin dashboards. Same screen in every direction (agenda + today) so the comparison is structural, not cosmetic.",
+  "artboards": [
+    {
+      "file": "01-clinical-sidebar.html",
+      "title": "01 · Dark sidebar, KPI row, schedule table",
+      "tradeoff": "Closest to the reference and instantly legible for front-desk staff; the KPI row costs vertical space and needs data the app can only partly source today.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "02-schedule-first.html",
+      "title": "02 · Light topbar, week grid as the hero",
+      "tradeoff": "Time is the primary axis, so availability and gaps read at a glance; the grid is the most expensive screen to build and degrades on narrow screens.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "03-clinical-console.html",
+      "title": "03 · Icon rail, master–detail console",
+      "tradeoff": "Fastest for working one appointment at a time and scales to long lists; denser and less welcoming, and it hides cross-professional overview.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "04-chosen-teal-sidebar.html",
+      "title": "04 · CHOSEN — 01 structure with 03 palette",
+      "tradeoff": "Keeps the legible front-desk layout while the ink-and-teal palette removes the 'generic admin template' feel; still needs a real Today screen so the KPI row is not decorative.",
+      "width": 1440,
+      "height": 900
+    }
+  ]
+}

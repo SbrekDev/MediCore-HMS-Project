@@ -34,16 +34,16 @@ describe('App routing', () => {
 
     renderAt('/patients');
 
-    expect(screen.getByRole('heading', { name: /MediCore HMS/i })).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
     expect(screen.getByTestId('patients-page')).toHaveTextContent('Patients');
   });
 
-  it('redirects the root path to the patients page for reception staff', () => {
+  it('redirects the root path to the today page for reception staff', () => {
     signIn('Receptionist');
 
     renderAt('/');
 
-    expect(screen.getByTestId('patients-page')).toBeInTheDocument();
+    expect(screen.getByTestId('today-page')).toBeInTheDocument();
   });
 
   it('sends an anonymous visitor to the login page', async () => {

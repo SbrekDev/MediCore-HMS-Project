@@ -1,3 +1,4 @@
+import { Badge, EmptyState, Table, Td, Th } from '../../../components/ui';
 import type { PatientDto } from '../types';
 
 interface PatientListProps {
@@ -7,35 +8,39 @@ interface PatientListProps {
 
 export function PatientList({ patients, isLoading }: PatientListProps) {
   if (isLoading) {
-    return <p>Loading patients…</p>;
+    return (
+      <p className="px-5 py-8 text-center text-[13px] text-muted-2">
+        Loading patients…
+      </p>
+    );
   }
 
   if (patients.length === 0) {
-    return <p>No patients found.</p>;
+    return <EmptyState>No patients found.</EmptyState>;
   }
 
   return (
-    <table>
+    <Table>
       <thead>
         <tr>
-          <th>Document</th>
-          <th>Name</th>
-          <th>Status</th>
+          <Th>Document</Th>
+          <Th>Name</Th>
+          <Th>Status</Th>
         </tr>
       </thead>
       <tbody>
         {patients.map((patient) => (
           <tr key={patient.id}>
-            <td>{`${patient.documentType} ${patient.documentNumber}`}</td>
-            <td>{`${patient.firstName} ${patient.lastName}`}</td>
-            <td>
+            <Td>{`${patient.documentType} ${patient.documentNumber}`}</Td>
+            <Td>{`${patient.firstName} ${patient.lastName}`}</Td>
+            <Td>
               {patient.consentPending && (
-                <span>Consent pending</span>
+                <Badge tone="warn">Consent pending</Badge>
               )}
-            </td>
+            </Td>
           </tr>
         ))}
       </tbody>
-    </table>
+    </Table>
   );
 }

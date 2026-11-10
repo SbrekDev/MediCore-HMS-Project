@@ -2,6 +2,18 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  Checkbox,
+  Field,
+  Input,
+  PageHeader,
+  Select,
+} from '../../../components/ui';
 import { getProfessionals, getSpecialties } from '../../professionals/api';
 import { searchPatients } from '../../patients/api';
 import {
@@ -187,102 +199,130 @@ export function BookingPage() {
   });
 
   return (
-    <div data-testid="booking-page">
-      <h2>Booking</h2>
+    <div data-testid="booking-page" className="flex flex-col gap-5">
+      <PageHeader
+        title="Booking"
+        description="Book and manage appointments for a professional."
+      />
 
-      {serverError && <p role="alert">{serverError}</p>}
-
-      <form
-        onSubmit={handleSubmit((values) =>
-          book.mutate(toCreateAppointmentRequest(values))
-        )}
-        noValidate
-      >
-        <div>
-          <label htmlFor="booking-professional">Professional</label>
-          <select id="booking-professional" {...register('professionalId')}>
-            <option value="">Select a professional</option>
-            {professionals.map((professional) => (
-              <option key={professional.id} value={professional.id}>
-                {professional.firstName} {professional.lastName}
-              </option>
-            ))}
-          </select>
-          {errors.professionalId && <span>{errors.professionalId.message}</span>}
-        </div>
-
-        <div>
-          <label htmlFor="booking-patient">Patient</label>
-          <select id="booking-patient" {...register('patientId')}>
-            <option value="">Select a patient</option>
-            {patients.map((patient) => (
-              <option key={patient.id} value={patient.id}>
-                {patient.firstName} {patient.lastName}
-              </option>
-            ))}
-          </select>
-          {errors.patientId && <span>{errors.patientId.message}</span>}
-        </div>
-
-        <div>
-          <label htmlFor="booking-specialty">Specialty</label>
-          <select id="booking-specialty" {...register('specialtyId')}>
-            <option value="">Select a specialty</option>
-            {specialties.map((specialty) => (
-              <option key={specialty.id} value={specialty.id}>
-                {specialty.name}
-              </option>
-            ))}
-          </select>
-          {errors.specialtyId && <span>{errors.specialtyId.message}</span>}
-        </div>
-
-        <div>
-          <label htmlFor="booking-date">Date</label>
-          <input id="booking-date" type="date" {...register('date')} />
-          {errors.date && <span>{errors.date.message}</span>}
-        </div>
-
-        <div>
-          <label htmlFor="booking-time">Time</label>
-          <input id="booking-time" type="time" {...register('time')} />
-          {errors.time && <span>{errors.time.message}</span>}
-        </div>
-
-        <div>
-          <label htmlFor="booking-sobreturno">
-            <input
-              id="booking-sobreturno"
-              type="checkbox"
-              {...register('isSobreturno')}
-            />
-            Sobreturno
-          </label>
-        </div>
-
-        <button type="submit" disabled={book.isPending}>
-          Book appointment
-        </button>
-      </form>
-
-      {isLoadingAvailability && <p>Loading availability…</p>}
-
-      {availability && availability.windows.length > 0 && (
-        <div>
-          <h3>Availability</h3>
-          <ul>
-            {availability.windows.map((window, index) => (
-              <li key={index}>{describeWindow(window)}</li>
-            ))}
-          </ul>
-        </div>
+      {serverError && (
+        <Alert>{serverError}</Alert>
       )}
 
-      {availability && availability.windows.length === 0 && (
-        <p>No availability for this day.</p>
-      )}
+      <Card>
+        <CardHeader title="Book appointment" />
+        <form
+          onSubmit={handleSubmit((values) =>
+            book.mutate(toCreateAppointmentRequest(values))
+          )}
+          noValidate
+          className="p-5"
+        >
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <Field
+              label="Professional"
+              htmlFor="booking-professional"
+              error={errors.professionalId?.message}
+            >
+              <Select id="booking-professional" {...register('professionalId')}>
+                <option value="">Select a professional</option>
+                {professionals.map((professional) => (
+                  <option key={professional.id} value={professional.id}>
+                    {professional.firstName} {professional.lastName}
+                  </option>
+                ))}
+              </Select>
+            </Field>
 
-      {isLoadingAppointments && <p>Loading appointments…</p>}
+            <Field
+              label="Patient"
+              htmlFor="booking-patient"
+              error={errors.patientId?.message}
+            >
+              <Select id="booking-patient" {...register('patientId')}>
+                <option value="">Select a patient</option>
+                {patients.map((patient) => (
+                  <option key={patient.id} value={patient.id}>
+                    {patient.firstName} {patient.lastName}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field
+              label="Specialty"
+              htmlFor="booking-specialty"
+              error={errors.specialtyId?.message}
+            >
+              <Select id="booking-specialty" {...register('specialtyId')}>
+                <option value="">Select a specialty</option>
+                {specialties.map((specialty) => (
+                  <option key={specialty.id} value={specialty.id}>
+                    {specialty.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field
+              label="Date"
+              htmlFor="booking-date"
+              error={errors.date?.message}
+            >
+              <Input id="booking-date" type="date" {...register('date')} />
+            </Field>
+
+            <Field
+              label="Time"
+              htmlFor="booking-time"
+              error={errors.time?.message}
+            >
+              <Input id="booking-time" type="time" {...register('time')} />
+            </Field>
+
+            <div className="flex items-end pb-2">
+              <Checkbox
+                id="booking-sobreturno"
+                label="Sobreturno"
+                {...register('isSobreturno')}
+              />
+            </div>
+          </div>
+
+          <div className="mt-5">
+            <Button type="submit" variant="primary" disabled={book.isPending}>
+              Book appointment
+            </Button>
+          </div>
+        </form>
+      </Card>
+
+      <Card>
+        <CardHeader title="Availability" />
+        <div className="p-5">
+          {isLoadingAvailability && (
+            <p className="text-[13px] text-muted-2">Loading availability…</p>
+          )}
+
+          {availability && availability.windows.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {availability.windows.map((window, index) => (
+                <Badge key={index} tone="brand">
+                  {describeWindow(window)}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {availability && availability.windows.length === 0 && (
+            <p className="text-[13px] text-muted">No availability for this day.</p>
+          )}
+        </div>
+      </Card>
+
+      {isLoadingAppointments && (
+        <p className="text-[13px] text-muted-2">Loading appointments…</p>
+      )}
 
       <AppointmentList
         appointments={appointments}
