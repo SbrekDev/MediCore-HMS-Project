@@ -9,6 +9,7 @@ import { ProfessionalsPage } from '../features/professionals/pages/Professionals
 import { AgendaPage } from '../features/agenda/pages/AgendaPage';
 import { BookingPage } from '../features/booking/pages/BookingPage';
 import { MyAppointmentsPage } from '../features/my-appointments/pages/MyAppointmentsPage';
+import { TodayPage } from '../features/today/pages/TodayPage';
 
 export const routes = [
   {
@@ -24,6 +25,14 @@ export const routes = [
     ),
     children: [
       { index: true, element: <IndexRedirect /> },
+      {
+        path: 'today',
+        element: (
+          <RequireRole allowed={CLINICAL_STAFF}>
+            <TodayPage />
+          </RequireRole>
+        ),
+      },
       {
         path: 'patients',
         element: (

@@ -44,11 +44,11 @@ describe('shell navigation matrix', () => {
       'Admin',
       'Admin',
       undefined,
-      ['/', '/patients', '/booking', '/agenda', '/professionals'],
+      ['/today', '/patients', '/booking', '/agenda', '/professionals'],
     ],
-    ['Receptionist', 'Receptionist', undefined, ['/', '/patients', '/booking']],
-    ['Professional without a claim', 'Professional', undefined, ['/']],
-    ['Professional with a claim', 'Professional', 'p-1', ['/', '/my-appointments']],
+    ['Receptionist', 'Receptionist', undefined, ['/today', '/patients', '/booking']],
+    ['Professional without a claim', 'Professional', undefined, ['/today']],
+    ['Professional with a claim', 'Professional', 'p-1', ['/today', '/my-appointments']],
   ])(
     'offers %s exactly the links their routes allow',
     (_, role, claim, expected) => {

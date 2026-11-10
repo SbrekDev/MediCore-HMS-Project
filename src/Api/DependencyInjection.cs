@@ -3,6 +3,7 @@ using MediCore.Api.Endpoints;
 using MediCore.Application;
 using MediCore.Application.Agendas;
 using MediCore.Application.Appointments;
+using MediCore.Application.Dashboard;
 using MediCore.Application.Patients;
 using MediCore.Application.Professionals;
 using MediCore.Application.Specialties;
@@ -39,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<CancelAppointment.Handler>();
         services.AddScoped<CompleteAppointment.Handler>();
         services.AddScoped<MarkNoShow.Handler>();
+        services.AddScoped<GetDashboardSummary.Handler>();
         return services;
     }
 
@@ -54,6 +56,7 @@ public static class DependencyInjection
         app.MapAuthEndpoints();
         app.MapAgendaEndpoints();
         app.MapAppointmentEndpoints();
+        app.MapDashboardEndpoints();
         app.MapPatientEndpoints();
         app.MapProfessionalEndpoints();
         app.MapSpecialtyEndpoints();

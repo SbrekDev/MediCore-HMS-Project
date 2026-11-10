@@ -11,9 +11,9 @@ type Role = 'Admin' | 'Receptionist' | 'Professional';
 
 /** Everything each account is allowed to open, guards included. */
 const OPENABLE: Record<Role, string[]> = {
-  Admin: ['/', '/patients', '/booking', '/agenda', '/professionals', '/my-appointments'],
-  Receptionist: ['/', '/patients', '/booking', '/my-appointments'],
-  Professional: ['/', '/my-appointments'],
+  Admin: ['/', '/today', '/patients', '/booking', '/agenda', '/professionals', '/my-appointments'],
+  Receptionist: ['/', '/today', '/patients', '/booking', '/my-appointments'],
+  Professional: ['/', '/today', '/my-appointments'],
 };
 
 const LABELS = ['Front desk', 'Clinical', 'Administration'];
@@ -46,10 +46,10 @@ function navHrefs(): string[] {
 }
 
 const ACCOUNTS: Array<[string, Role, string | undefined, string]> = [
-  ['Admin', 'Admin', undefined, '/patients'],
-  ['Receptionist', 'Receptionist', undefined, '/patients'],
-  ['Professional with claim', 'Professional', 'p-1', '/my-appointments'],
-  ['Professional without claim', 'Professional', undefined, '/my-appointments'],
+  ['Admin', 'Admin', undefined, '/today'],
+  ['Receptionist', 'Receptionist', undefined, '/today'],
+  ['Professional with claim', 'Professional', 'p-1', '/today'],
+  ['Professional without claim', 'Professional', undefined, '/today'],
 ];
 
 describe('role landing matrix', () => {

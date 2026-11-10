@@ -7,6 +7,7 @@ const RECEPTION_STAFF = ['Admin', 'Receptionist'];
 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Today',
+  '/today': 'Today',
   '/patients': 'Patients',
   '/professionals': 'Professionals',
   '/agenda': 'Agenda',
@@ -75,7 +76,7 @@ export function Layout(): ReactElement {
         </div>
 
         <nav className="flex flex-col gap-0.5" aria-label="Main">
-          <NavItem to="/" icon={<TodayIcon />} end>
+          <NavItem to="/today" icon={<TodayIcon />} end>
             Today
           </NavItem>
 
