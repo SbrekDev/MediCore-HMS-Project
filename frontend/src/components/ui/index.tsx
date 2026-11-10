@@ -66,6 +66,27 @@ export function Textarea({
   return <textarea className={`${FIELD_BASE} ${className}`} {...rest} />;
 }
 
+interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
+  label: ReactNode;
+}
+
+/** A checkbox always carries its own label: an unlabelled one is unclickable for a reader. */
+export function Checkbox({ label, className = '', ...rest }: CheckboxProps) {
+  return (
+    <label
+      htmlFor={rest.id}
+      className={`inline-flex cursor-pointer items-start gap-2.5 text-[13px] text-text ${className}`}
+    >
+      <input
+        type="checkbox"
+        className="mt-0.5 h-4 w-4 shrink-0 rounded-[4px] border border-line-strong accent-brand focus:outline-none focus:ring-2 focus:ring-brand/45"
+        {...rest}
+      />
+      <span>{label}</span>
+    </label>
+  );
+}
+
 interface FieldProps {
   label: string;
   htmlFor: string;
